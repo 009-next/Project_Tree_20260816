@@ -6,6 +6,10 @@
 
 > **起動方法は [First_READ.md](First_READ.md) を読んでください。**
 
+**公開URL（インストール不要・閲覧専用）**: デプロイ後にここへ記載します。
+同梱データの閲覧・資料出力・2D/3Dモデル操作が試せます。
+資料の取り込みとLLM実行は、公開先では無効にしています（下記のexeかPythonでお試しください）。
+
 **exeで起動（Python不要）**: [Releases](https://github.com/009-next/Project_Tree/releases) から
 `Project_Tree_windows.zip` をダウンロード → 展開 → `Project_Tree.exe` をダブルクリック。
 
@@ -110,6 +114,8 @@ scratch_out/demo_video/         デモ動画（約2分）
 scratch_out/deck_shots/         資料に使用したスクリーンショット
 Project_Tree.spec               PyInstaller 設定（exe化する場合）
 build_exe.py                    exeのビルドスクリプト（python build_exe.py）
+app_public.py                   公開URL用の起動口（閲覧専用ガードを被せる）
+deploy/huggingface/             公開URL（Hugging Face Spaces）の設定一式
 ```
 
 ---
