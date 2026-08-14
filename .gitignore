@@ -1,0 +1,20 @@
+# 秘密情報（絶対にコミットしない）
+APIKEY.txt
+API_key_Orca.py
+.env
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# PyInstaller のビルド生成物
+build/
+dist/
+
+# 実行時の生成物
+exports/
+*.log
+server.log

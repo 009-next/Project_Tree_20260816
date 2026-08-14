@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>業務確定台帳</title>
+<style>
+  :root {
+    --fact: #2e7d32; --fact-bg: #e8f5e9;
+    --interp: #b8860b; --interp-bg: #fff8e1;
+    --pred: #616161; --pred-bg: #f5f5f5;
+    --danger: #c62828; --danger-bg: #ffebee;
+    --border: #ddd;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Hiragino Sans", sans-serif; margin: 0; background: #fafafa; color: #222; }
+  header { background: #1a237e; color: white; padding: 16px 24px; }
+  header h1 { margin: 0; font-size: 18px; }
+  .layout { display: flex; height: calc(100vh - 56px); }
+  nav { width: 280px; overflow-y: auto; border-right: 1px solid var(--border); background: white; }
+  nav .thread-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  nav .thread-item:hover { background: #f0f4ff; }
+  nav .thread-item.active { background: #e3e9ff; font-weight: bold; }
+  main { flex: 1; overflow-y: auto; padding: 20px 28px; }
+
+  section.panel { background: white; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; padding: 16px 20px; }
+  section.panel h2 { margin-top: 0; font-size: 15px; color: #444; }
+
+  .discrepancy-card { border: 1px solid var(--danger); background: var(--danger-bg); border-radius: 6px; padding: 14px; margin-bottom: 14px; }
+  .discrepancy-card.benign { border-color: #9e9e9e; background: #f5f5f5; }
+  .discrepancy-title { font-weight: bold; margin-bottom: 8px; }
+  .claim-compare { display: flex; gap: 12px; }
+  .claim-box { flex: 1; border: 1px solid var(--border); border-radius: 4px; padding: 10px; background: white; font-size: 13px; }
+  .claim-box .claim-value { font-weight: bold; font-size: 15px; margin: 4px 0; }
+  .claim-box .claim-quote { color: #666; font-style: italic; border-left: 3px solid var(--border); padding-left: 8px; margin-top: 6px; }
+  .claim-box .claim-src { color: #999; font-size: 11px; margin-top: 4px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; }
+  .badge.stale { background: var(--danger-bg); color: var(--danger); }
+  .badge.newest { background: #e8f5e9; color: var(--fact); }
+
+  .event-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; cursor: pointer; }
+  .event-row:hover { background: #fafafa; }
+  .event-date { width: 90px; color: #888; flex-shrink: 0; }
+  .event-kind { width: 110px; flex-shrink: 0; font-size: 11px; color: #666; }
+  .event-summary { flex: 1; }
+
+  .insight-card { border-radius: 6px; padding: 12px 16px; margin-bottom: 10px; border-left: 4px solid; }
+  .insight-card.fact { border-color: var(--fact); background: var(--fact-bg); }
+  .insight-card.interpretation { border-color: var(--interp); background: var(--interp-bg); }
+  .insight-card.prediction { border-color: var(--pred); background: var(--pred-bg); }
+  .insight-label { font-size: 11px; font-weight: bold; text-transform: uppercase; }
+  .insight-label.fact { color: var(--fact); }
+  .insight-label.interpretation { color: var(--interp); }
+  .insight-label.prediction { color: var(--pred); }
+  .insight-tag { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 10px; margin-left: 6px; background: #eee; color: #555; }
+  .insight-tag.hypothesis { background: #fff3e0; color: #e65100; font-weight: bold; }
+
+  .gap-row { padding: 8px 12px; background: #eeeeee; border-radius: 4px; margin-bottom: 6px; font-size: 13px; color: #555; }
+
+  .source-viewer { position: fixed; top: 0; right: 0; width: 45%; height: 100%; background: white;
+                    border-left: 2px solid #333; box-shadow: -4px 0 12px rgba(0,0,0,0.15); overflow-y: auto;
+                    padding: 20px; display: none; z-index: 100; }
+  .source-viewer.open { display: block; }
+  .source-viewer .close-btn { position: absolute; top: 12px; right: 16px; cursor: pointer; font-size: 20px; }
+  .source-line { font-family: Consolas, monospace; font-size: 13px; white-space: pre-wrap; padding: 2px 8px; }
+  .source-line.hi { background: #fff59d; }
+
+  .cost-bar { font-size: 12px; color: #666; padding: 8px 20px; background: #f0f0f0; }
+  .empty-note { color: #999; font-size: 13px; padding: 10px 0; }
+</style>
+</head>
+<body>
+<header><h1>業務確定台帳</h1></header>
+<div class="cost-bar" id="costBar">読み込み中...</div>
+<div class="layout">
+  <nav id="threadList"></nav>
+  <main id="main">
+    <div class="empty-note">左のリストから案件を選んでください。</div>
+  </main>
+</div>
+<div class="source-viewer" id="sourceViewer">
+  <span class="close-btn" onclick="closeSource()">&times;</span>
+  <div id="sourceContent"></div>
+</div>
+
+<script>
+const API = "";
+
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = (s === null || s === undefined) ? "" : String(s);
+  return d.innerHTML;
+}
+
+async function loadThreads() {
+  const threads = await (await fetch(`${API}/api/threads`)).json();
+  const nav = document.getElementById("threadList");
+  nav.innerHTML = "";
+  for (const t of threads) {
+    const div = document.createElement("div");
+    div.className = "thread-item";
+    div.dataset.id = t.thread_id;
+    div.textContent = t.name;
+    div.onclick = () => selectThread(t.thread_id, div);
+    nav.appendChild(div);
+  }
+}
+
+async function loadCostSummary() {
+  const c = await (await fetch(`${API}/api/runs/cost_summary`)).json();
+  document.getElementById("costBar").textContent =
+    `累計コスト: $${c.total_cost_usd}（実行 ${c.runs} 回・入力 ${c.total_input_tokens.toLocaleString()} tok・出力 ${c.total_output_tokens.toLocaleString()} tok）`;
+}
+
+async function selectThread(threadId, el) {
+  document.querySelectorAll(".thread-item").forEach(e => e.classList.remove("active"));
+  if (el) el.classList.add("active");
+
+  const data = await (await fetch(`${API}/api/timeline?thread_id=${threadId}`)).json();
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+
+  const header = document.createElement("h2");
+  header.textContent = data.thread.name + (data.thread.aliases.length ? ` （表記ゆれ: ${data.thread.aliases.join(" / ")}）` : "");
+  main.appendChild(header);
+
+  if (data.gaps.length) {
+    const sec = document.createElement("section");
+    sec.className = "panel";
+    sec.innerHTML = `<h2>空白</h2>`;
+    for (const g of data.gaps) {
+      const row = document.createElement("div");
+      row.className = "gap-row";
+      row.textContent = g.description;
+      sec.appendChild(row);
+    }
+    main.appendChild(sec);
+  }
+
+  if (data.insights.length) {
+    const sec = document.createElement("section");
+    sec.className = "panel";
+    sec.innerHTML = `<h2>気づき・予測</h2>`;
+    for (const ins of data.insights) {
+      const card = document.createElement("div");
+      card.className = `insight-card ${ins.label}`;
+      const tag = ins.detection_method === "llm"
+        ? `<span class="insight-tag hypothesis">仮説・未検証</span>`
+        : `<span class="insight-tag">自動検出</span>`;
+      card.innerHTML = `<span class="insight-label ${ins.label}">${ins.label}</span>${tag}
+        <div style="margin-top:6px;">${esc(ins.statement)}</div>
+        ${ins.horizon ? `<div style="font-size:11px;color:#888;margin-top:4px;">検証時期: ${esc(ins.horizon)}</div>` : ""}`;
+      sec.appendChild(card);
+    }
+    main.appendChild(sec);
+  }
+
+  const evSec = document.createElement("section");
+  evSec.className = "panel";
+  evSec.innerHTML = `<h2>時系列（クリックで原文へ）</h2>`;
+  if (data.events.length === 0) {
+    evSec.innerHTML += `<div class="empty-note">イベントがありません。</div>`;
+  }
+  for (const e of data.events) {
+    const row = document.createElement("div");
+    row.className = "event-row";
+    row.innerHTML = `<div class="event-date">${esc(e.occurred_on)}</div>
+      <div class="event-kind">${esc(e.kind)}</div>
+      <div class="event-summary">${esc(e.summary)}</div>`;
+    row.onclick = () => openSource(e.doc_id, e.source.start_line, e.source.end_line);
+    evSec.appendChild(row);
+  }
+  main.appendChild(evSec);
+}
+
+async function openSource(docId, startLine, endLine) {
+  const data = await (await fetch(`${API}/api/source/${docId}?start_line=${startLine}&end_line=${endLine}&context=4`)).json();
+  const content = document.getElementById("sourceContent");
+  let html = `<h3>${esc(data.title)}</h3><div style="color:#888;font-size:12px;margin-bottom:10px;">${esc(data.source_path)} ／ ${esc(data.occurred_at)}</div>`;
+  for (const l of data.lines) {
+    html += `<div class="source-line ${l.highlighted ? "hi" : ""}">${String(l.line).padStart(4)}: ${esc(l.text)}</div>`;
+  }
+  content.innerHTML = html;
+  document.getElementById("sourceViewer").classList.add("open");
+}
+
+function closeSource() {
+  document.getElementById("sourceViewer").classList.remove("open");
+}
+
+async function loadDiscrepancies() {
+  const items = await (await fetch(`${API}/api/discrepancies?status=open`)).json();
+  if (!items.length) return;
+  const main = document.getElementById("main");
+  const sec = document.createElement("section");
+  sec.className = "panel";
+  sec.innerHTML = `<h2>⚠ 未反映の疑い（食い違い検出）</h2>`;
+  for (const d of items) {
+    const card = document.createElement("div");
+    card.className = "discrepancy-card";
+    let boxes = "";
+    for (const c of d.claims) {
+      const isStale = d.stale_claim_ids.includes(c.claim_id);
+      const isNewest = c.claim_id === d.newest_claim_id;
+      boxes += `<div class="claim-box">
+        <div>${esc(c.object_surface)} ${isStale ? '<span class="badge stale">未反映</span>' : ""}${isNewest ? '<span class="badge newest">最新決定</span>' : ""}</div>
+        <div class="claim-value">${esc(c.value_raw)}</div>
+        <div class="claim-quote" onclick="openSource('${c.doc_id}', ${c.source.start_line}, ${c.source.end_line})" style="cursor:pointer;">「${esc(c.source.quote)}」</div>
+        <div class="claim-src">${esc(c.doc_id)}</div>
+      </div>`;
+    }
+    card.innerHTML = `<div class="discrepancy-title">${esc(d.object ? d.object.name : "")} — ${esc(d.attribute)}</div>
+      <div class="claim-compare">${boxes}</div>`;
+    sec.appendChild(card);
+  }
+  main.prepend(sec);
+}
+
+loadThreads();
+loadCostSummary();
+loadDiscrepancies();
+</script>
+</body>
+</html>

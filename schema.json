@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/gyomu-ledger/schema.json",
+  "title": "業務確定台帳 スキーマ v2.1",
+  "description": "本ファイルが唯一の正本。散文解説は schema.md（重複記述はしない）。v2.0: thread_hint / magnitude / detection_method(2レーン) / pattern_type / pattern_evidence。v2.1: 食い違い検出（Object / Claim / Discrepancy）を追加。台帳の問い合わせの一種であり、別パイプラインではない。",
+
+  "$defs": {
+
+    "SourceSpan": {
+      "type": "object",
+      "properties": {
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 },
+        "quote": { "type": "string", "minLength": 1, "description": "原文からの逐語引用。要約不可。取り込み時に Document.text と機械照合する" }
+      },
+      "required": ["start_line", "end_line", "quote"],
+      "additionalProperties": false
+    },
+
+    "Magnitude": {
+      "type": "object",
+      "description": "変更量。v2.0 では未使用だが、抽出時にしか取れないため先に確保する（escalation パターンの将来実装用）",
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "type": "string", "examples": ["days", "JPY", "percent", "count"] }
+      },
+      "required": ["value", "unit"],
+      "additionalProperties": false
+    },
+
+    "ImageRef": {
+      "type": "object",
+      "properties": {
+        "image_id": { "type": "string", "pattern": "^img_" },
+        "doc_id": { "type": "string", "pattern": "^doc_" },
+        "at_line": { "type": "integer", "minimum": 1 },
+        "media_type": { "type": "string" },
+        "verbalized_text": { "type": "string", "minLength": 1 },
+        "verbalized_at": { "type": "string", "format": "date-time" },
+        "run_id": { "type": "string", "pattern": "^run_" }
+      },
+      "required": ["image_id", "doc_id", "at_line", "media_type", "verbalized_text", "verbalized_at", "run_id"],
+      "additionalProperties": false
+    },
+
+    "Document": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "pattern": "^doc_[0-9a-f]{12}$",
+          "description": "doc_ + content_sha256[:12]。内容由来。ファイル名やパスから生成すると凍結が破れる"
+        },
+        "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "source_path": { "type": "string" },
+        "source_type": { "enum": ["minutes", "email", "report", "memo", "attachment"] },
+        "title": { "type": "string" },
+        "occurred_at": { "type": "string", "format": "date", "description": "文書が扱う日付（会議日/送信日）。ファイル更新日ではない" },
+        "ingested_at": { "type": "string", "format": "date-time" },
+        "author": { "type": ["string", "null"] },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "text": { "type": "string" },
+        "line_count": { "type": "integer", "minimum": 1 },
+        "image_refs": { "type": "array", "items": { "$ref": "#/$defs/ImageRef" } }
+      },
+      "required": ["doc_id", "content_sha256", "source_path", "source_type", "title", "occurred_at", "ingested_at", "text", "line_count"],
+      "additionalProperties": false
+    },
+
+    "Event": {
+      "type": "object",
+      "properties": {
+        "event_id": { "type": "string", "pattern": "^evt_" },
+        "doc_id": { "type": "string", "pattern": "^doc_" },
+        "run_id": { "type": "string", "pattern": "^run_" },
+        "occurred_on": { "type": "string", "format": "date" },
+        "date_precision": {
+          "enum": ["exact", "month", "quarter", "unknown"],
+          "description": "「来月末までに」等に対して日付を捏造させないための逃げ道"
+        },
+        "thread_id": { "type": ["string", "null"], "pattern": "^thr_" },
+        "thread_hint": {
+          "type": ["string", "null"],
+          "description": "L2 時点での案件推定（案B）。L3 名寄せの入力。文書文脈は抽出時にしか無いため後から足せない。信用しすぎないこと"
+        },
+        "kind": {
+          "enum": ["decision", "issue", "request", "completion", "concern", "schedule_change", "cost_change", "info"],
+          "description": "schedule_change / cost_change を独立させているのは、パターン検出の主軸だから"
+        },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "detail": { "type": ["string", "null"] },
+        "actors": { "type": "array", "items": { "type": "string" } },
+        "targets": { "type": "array", "items": { "type": "string" } },
+        "magnitude": { "anyOf": [{ "$ref": "#/$defs/Magnitude" }, { "type": "null" }] },
+        "source_span": { "$ref": "#/$defs/SourceSpan" },
+        "certainty": { "enum": ["explicit", "inferred"], "description": "文書に明記 / 行間からの読み取り" },
+        "status": { "enum": ["open", "closed", "superseded"] },
+        "supersedes": { "type": "array", "items": { "type": "string", "pattern": "^evt_" } }
+      },
+      "required": ["event_id", "doc_id", "run_id", "occurred_on", "date_precision", "kind", "summary", "source_span", "certainty", "status"],
+      "additionalProperties": false
+    },
+
+    "Thread": {
+      "type": "object",
+      "properties": {
+        "thread_id": { "type": "string", "pattern": "^thr_" },
+        "name": { "type": "string", "minLength": 1 },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "first_seen": { "type": "string", "format": "date" },
+        "last_seen": { "type": "string", "format": "date" },
+        "status": { "enum": ["active", "dormant", "closed"] },
+        "event_ids": { "type": "array", "items": { "type": "string", "pattern": "^evt_" } }
+      },
+      "required": ["thread_id", "name", "first_seen", "last_seen", "status", "event_ids"],
+      "additionalProperties": false
+    },
+
+    "PatternEvidence": {
+      "type": "object",
+      "description": "SQL が算出した数値。LLM は書き換え不可。statement 内にこの値を含めさせる",
+      "properties": {
+        "occurrences": { "type": "integer", "minimum": 2 },
+        "dates": { "type": "array", "items": { "type": "string", "format": "date" }, "minItems": 2 },
+        "interval_days_mean": { "type": ["number", "null"] },
+        "interval_days_stdev": { "type": ["number", "null"] },
+        "kind_from": { "type": ["string", "null"] },
+        "kind_to": { "type": ["string", "null"] }
+      },
+      "required": ["occurrences", "dates"],
+      "additionalProperties": false
+    },
+
+    "Insight": {
+      "type": "object",
+      "description": "2レーン構成。rule=SQLが検出しLLMは言語化のみ / llm=LLMの自由探索(仮説扱い)。",
+      "properties": {
+        "insight_id": { "type": "string", "pattern": "^ins_" },
+        "run_id": { "type": "string", "pattern": "^run_" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "thread_id": { "type": ["string", "null"], "pattern": "^thr_" },
+        "detection_method": {
+          "enum": ["rule", "llm"],
+          "description": "rule: 根拠はSQLが確定させLLMは選べない / llm: 探索レーン。UIで「仮説・未検証」と表示する"
+        },
+        "type": { "enum": ["observation", "pattern", "forecast", "advice"] },
+        "label": { "enum": ["fact", "interpretation", "prediction"] },
+        "statement": { "type": "string", "minLength": 1 },
+        "basis_event_ids": { "type": "array", "items": { "type": "string", "pattern": "^evt_" } },
+        "pattern_type": {
+          "enum": ["recurrence", "chain", null],
+          "description": "ruleレーンのみ。stall は gaps.unanswered_request、escalation は magnitude 未使用のため v2.0 では見送り"
+        },
+        "pattern_evidence": { "anyOf": [{ "$ref": "#/$defs/PatternEvidence" }, { "type": "null" }] },
+        "basis_rule": { "type": ["string", "null"], "description": "llmレーンのみ。自由文" },
+        "horizon": { "type": ["string", "null"] }
+      },
+      "required": ["insight_id", "run_id", "generated_at", "detection_method", "type", "label", "statement", "basis_event_ids"],
+      "additionalProperties": false,
+
+      "allOf": [
+        {
+          "$comment": "ruleレーン: pattern_type と SQL算出の pattern_evidence が必須。LLMは根拠を選べない",
+          "if": { "properties": { "detection_method": { "const": "rule" } }, "required": ["detection_method"] },
+          "then": {
+            "properties": {
+              "pattern_type": { "enum": ["recurrence", "chain"] },
+              "basis_event_ids": { "minItems": 2 }
+            },
+            "required": ["pattern_type", "pattern_evidence", "thread_id"]
+          }
+        },
+        {
+          "$comment": "llmレーン: 根拠2件以上 + horizon 必須（反証可能性の強制）+ basis_rule。pattern_* は使わない",
+          "if": { "properties": { "detection_method": { "const": "llm" } }, "required": ["detection_method"] },
+          "then": {
+            "properties": {
+              "basis_event_ids": { "minItems": 2 },
+              "basis_rule": { "type": "string", "minLength": 1 },
+              "horizon": { "type": "string", "minLength": 1 },
+              "pattern_type": { "const": null },
+              "pattern_evidence": { "const": null }
+            },
+            "required": ["basis_rule", "horizon", "thread_id"]
+          }
+        },
+        {
+          "$comment": "fact も出典必須",
+          "if": { "properties": { "label": { "const": "fact" } }, "required": ["label"] },
+          "then": { "properties": { "basis_event_ids": { "minItems": 1 } } }
+        }
+      ]
+    },
+
+    "Object": {
+      "type": "object",
+      "description": "照合の対象物。Thread（案件）とは別軸で、物・仕様・部材を指す。aliases が④AIの必然性の実演材料になるため、UI に必ず出す",
+      "properties": {
+        "object_id": { "type": "string", "pattern": "^obj_" },
+        "name": { "type": "string", "minLength": 1, "description": "正規名。例「基礎配筋」" },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "表記ゆれ。例 [\"基礎鉄筋\",\"F1配筋\",\"異形棒鋼\"]。grep との対比で画面に出す"
+        },
+        "kind": { "type": ["string", "null"], "description": "部材 / 工程 / 数量 など" }
+      },
+      "required": ["object_id", "name"],
+      "additionalProperties": false
+    },
+
+    "Claim": {
+      "type": "object",
+      "description": "文書中の検証可能な主張。{対象物, 属性, 値} の三つ組。Event が「出来事」なのに対し Claim は「値」。突合の単位",
+      "properties": {
+        "claim_id": { "type": "string", "pattern": "^clm_" },
+        "doc_id": { "type": "string", "pattern": "^doc_" },
+        "run_id": { "type": "string", "pattern": "^run_" },
+        "object_id": { "type": ["string", "null"], "pattern": "^obj_", "description": "L3 で付与。L2 時点では null" },
+        "object_hint": { "type": ["string", "null"], "description": "L2 での対象物推定。名寄せの入力。thread_hint と同じ理由で後から足せない" },
+        "object_surface": { "type": "string", "minLength": 1, "description": "原文での表記そのまま。「F1配筋」" },
+        "attribute": { "type": "string", "minLength": 1, "description": "「鉄筋径」「数量」「工期」" },
+        "value_raw": { "type": "string", "minLength": 1, "description": "原文の値。「D16」" },
+        "value_norm": { "type": ["string", "null"], "description": "正規化値。突合はこれで行う。正規化できなければ null（突合対象外）" },
+        "unit": { "type": ["string", "null"] },
+        "effective_on": { "type": ["string", "null"], "format": "date", "description": "いつ時点の値か" },
+        "revision": { "type": ["string", "null"], "description": "改訂番号。新旧判定に使う" },
+        "scope": {
+          "type": ["string", "null"],
+          "description": "適用範囲。「A工区」「地盤改良時」。★誤検出抑制の要 — scope が異なる差異は正当な差異として SQL で除外する"
+        },
+        "source_span": { "$ref": "#/$defs/SourceSpan" },
+        "certainty": { "enum": ["explicit", "inferred"] }
+      },
+      "required": ["claim_id", "doc_id", "run_id", "object_surface", "attribute", "value_raw", "source_span", "certainty"],
+      "additionalProperties": false
+    },
+
+    "Discrepancy": {
+      "type": "object",
+      "description": "食い違い。Insight と同じ2レーン構成。rule=SQLが値の不一致を確定 / llm=正当な差異かの判定。台帳の問い合わせの一種",
+      "properties": {
+        "discrepancy_id": { "type": "string", "pattern": "^dsc_" },
+        "run_id": { "type": "string", "pattern": "^run_" },
+        "object_id": { "type": "string", "pattern": "^obj_" },
+        "attribute": { "type": "string", "minLength": 1 },
+        "detection_method": { "enum": ["rule", "llm"] },
+        "status": {
+          "enum": ["open", "benign", "resolved"],
+          "description": "open=未反映の疑い / benign=正当な差異 / resolved=対処済み"
+        },
+        "claim_ids": { "type": "array", "items": { "type": "string", "pattern": "^clm_" }, "minItems": 2 },
+        "newest_claim_id": { "type": ["string", "null"], "pattern": "^clm_", "description": "正とみなす方。effective_on / revision で決定" },
+        "stale_claim_ids": { "type": "array", "items": { "type": "string", "pattern": "^clm_" }, "description": "未反映の疑い。これが UI の左側に並ぶ" },
+        "benign_reason": {
+          "enum": ["scope_differs", "revision_ordered", "conditional", null],
+          "description": "status=benign の根拠。SQL が判定したものは非 null"
+        },
+        "explanation": { "type": ["string", "null"], "description": "llm レーンのみ。判定文" }
+      },
+      "required": ["discrepancy_id", "run_id", "object_id", "attribute", "detection_method", "status", "claim_ids"],
+      "additionalProperties": false,
+
+      "allOf": [
+        {
+          "$comment": "ruleレーン: explanationは常にnull（LLMは判定文を書かない）",
+          "if": { "properties": { "detection_method": { "const": "rule" } }, "required": ["detection_method"] },
+          "then": { "properties": { "explanation": { "const": null } } }
+        },
+        {
+          "$comment": "ruleレーン かつ status=open のときだけ newest_claim_id が必須。scope違いでの自動benignには「最新」の概念が無い",
+          "if": {
+            "properties": { "detection_method": { "const": "rule" }, "status": { "const": "open" } },
+            "required": ["detection_method", "status"]
+          },
+          "then": { "required": ["newest_claim_id", "stale_claim_ids"] }
+        },
+        {
+          "$comment": "llmレーン: 正当な差異かの判定。必ず説明文を伴う",
+          "if": { "properties": { "detection_method": { "const": "llm" } }, "required": ["detection_method"] },
+          "then": {
+            "properties": { "explanation": { "type": "string", "minLength": 1 } },
+            "required": ["explanation"]
+          }
+        },
+        {
+          "$comment": "benign と判定するなら根拠が要る",
+          "if": { "properties": { "status": { "const": "benign" } }, "required": ["status"] },
+          "then": { "required": ["benign_reason"] }
+        }
+      ]
+    },
+
+    "Gap": {
+      "type": "object",
+      "description": "空白の明示。LLM生成ではなくSQL導出。ここにLLMを入れると『答えられない』の信頼性が失われる",
+      "properties": {
+        "gap_id": { "type": "string", "pattern": "^gap_" },
+        "thread_id": { "type": "string", "pattern": "^thr_" },
+        "kind": { "enum": ["no_record_after", "unanswered_request", "unresolved_issue"] },
+        "period_start": { "type": "string", "format": "date" },
+        "period_end": { "type": ["string", "null"], "format": "date" },
+        "anchor_event_id": { "type": ["string", "null"], "pattern": "^evt_" },
+        "description": { "type": "string", "minLength": 1 }
+      },
+      "required": ["gap_id", "thread_id", "kind", "period_start", "description"],
+      "additionalProperties": false
+    },
+
+    "ExtractionRun": {
+      "type": "object",
+      "properties": {
+        "run_id": { "type": "string", "pattern": "^run_" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "finished_at": { "type": ["string", "null"], "format": "date-time" },
+        "stage": { "enum": ["extract", "thread", "pattern", "insight", "verbalize"] },
+        "model": { "type": "string" },
+        "prompt_version": { "type": "string" },
+        "parent_run_id": { "type": ["string", "null"], "pattern": "^run_" },
+        "doc_count": { "type": "integer", "minimum": 0 },
+        "event_count": { "type": "integer", "minimum": 0 },
+        "rejected_count": { "type": "integer", "minimum": 0, "description": "検証で破棄した件数。デモで提示する数字" },
+        "input_tokens": { "type": "integer", "minimum": 0 },
+        "output_tokens": { "type": "integer", "minimum": 0 },
+        "cache_read_tokens": { "type": "integer", "minimum": 0 },
+        "cache_write_tokens": { "type": "integer", "minimum": 0 },
+        "cost_usd": { "type": "number", "minimum": 0 },
+        "batch_id": { "type": ["string", "null"] }
+      },
+      "required": ["run_id", "started_at", "stage", "model", "prompt_version", "doc_count", "event_count", "input_tokens", "output_tokens", "cost_usd"],
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "properties": {
+    "documents": { "type": "array", "items": { "$ref": "#/$defs/Document" } },
+    "events": { "type": "array", "items": { "$ref": "#/$defs/Event" } },
+    "threads": { "type": "array", "items": { "$ref": "#/$defs/Thread" } },
+    "insights": { "type": "array", "items": { "$ref": "#/$defs/Insight" } },
+    "gaps": { "type": "array", "items": { "$ref": "#/$defs/Gap" } },
+    "objects": { "type": "array", "items": { "$ref": "#/$defs/Object" } },
+    "claims": { "type": "array", "items": { "$ref": "#/$defs/Claim" } },
+    "discrepancies": { "type": "array", "items": { "$ref": "#/$defs/Discrepancy" } },
+    "runs": { "type": "array", "items": { "$ref": "#/$defs/ExtractionRun" } }
+  },
+  "additionalProperties": false
+}

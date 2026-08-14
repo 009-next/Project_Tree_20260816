@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Project_Tree</title>
+<style>
+:root{
+  /* 台帳側 timeline.html の3色ラベルをそのまま流用 */
+  --fact:#2e7d32; --fact-bg:#e8f5e9;
+  --interp:#b8860b; --interp-bg:#fff8e1;
+  --pred:#616161; --pred-bg:#f5f5f5;
+  --danger:#c62828; --danger-bg:#ffebee;
+  --ink:#e8ecf3; --panel:#222a38; --panel2:#1a2130; --line:#39435a;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Hiragino Sans",sans-serif;background:#141821;color:var(--ink);overflow:hidden}
+header{background:#1a237e;padding:8px 16px;display:flex;align-items:center;gap:14px;height:48px}
+header h1{margin:0;font-size:16px;letter-spacing:.04em}
+header .meta{font-size:12px;opacity:.85;margin-left:auto}
+select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:13px}
+
+#app{display:flex;height:calc(100vh - 48px)}
+#tree{width:230px;background:var(--panel2);border-right:1px solid var(--line);overflow-y:auto;flex-shrink:0}
+#tree .t-item{padding:9px 12px;font-size:12.5px;cursor:pointer;border-bottom:1px solid #232c3d}
+#tree .t-item:hover{background:#28324a}
+#tree .t-item.active{background:#2f3d5e;font-weight:bold}
+#tree .t-sub{font-size:10.5px;opacity:.6;margin-top:2px}
+
+#stage{display:flex;flex-direction:column;flex:1;min-width:0}
+#top{height:38%;background:var(--panel2);display:flex;gap:10px;padding:10px;overflow-x:auto;overflow-y:hidden;align-items:stretch}
+#splitter{height:6px;background:var(--line);cursor:row-resize;flex-shrink:0}
+#splitter:hover{background:#4a5772}
+#bottom{flex:1;position:relative;min-height:0;display:flex}
+#viewport{flex:1;position:relative;min-width:0}
+#cv{width:100%;height:100%;display:block}
+#svgpane{width:38%;border-left:1px solid var(--line);background:#10141d;display:none;overflow:auto;padding:8px}
+#svgpane svg{width:100%;height:auto}
+#svgpane .pt-part{cursor:pointer;transition:fill .15s}
+
+.card{min-width:190px;max-width:190px;background:var(--panel);border:2px solid var(--line);border-radius:8px;
+      padding:10px;cursor:pointer;display:flex;flex-direction:column;transition:box-shadow .2s,border-color .2s}
+.card:hover{border-color:#5c6b8a}
+.card .c-no{font-size:10px;opacity:.6}
+.card .c-title{font-size:13px;font-weight:bold;margin:3px 0 6px}
+.card .c-img{width:100%;aspect-ratio:16/9;object-fit:cover;object-position:top left;
+  border:1px solid var(--line);border-radius:4px;margin-bottom:6px;background:#14181f}
+.card .c-sum{font-size:11px;line-height:1.5;opacity:.85;overflow:hidden;flex:1}
+.card .c-cnt{font-size:10px;opacity:.6;margin-top:6px}
+/* Enhancement.md 2-2: 提案は薄い赤で発光 */
+.card.proposal{border-color:var(--danger);box-shadow:0 0 14px 2px rgba(198,40,40,.55)}
+/* モデル部位クリック時: 対応する段階を緑で発光 */
+.card.linked{border-color:var(--fact);box-shadow:0 0 16px 3px rgba(46,125,50,.75)}
+.card.active{background:#2c3консь}
+.card.active{background:#2b364d}
+
+#hud{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.72);padding:8px 12px;border-radius:6px;
+     font-size:12px;max-width:70%;line-height:1.6}
+#toolbar{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.72);padding:8px;border-radius:6px;font-size:12px}
+#toolbar label{display:block;margin:3px 0}
+#toolbar input[type=range]{width:130px;vertical-align:middle}
+
+/* 時系列パネル（右からスライド） */
+#tl{position:fixed;right:0;top:48px;width:44%;height:calc(100vh - 48px);background:#fff;color:#222;
+    box-shadow:-4px 0 16px rgba(0,0,0,.4);overflow-y:auto;padding:16px;display:none;z-index:50}
+#tl.open{display:block}
+#tl h3{margin:0 0 4px}
+#tl .close{position:absolute;right:14px;top:10px;cursor:pointer;font-size:22px;line-height:1}
+.ev{padding:7px 0;border-bottom:1px solid #eee;font-size:13px;cursor:pointer;display:flex;gap:8px}
+.ev:hover{background:#fafafa}
+.ev .d{width:88px;color:#888;flex-shrink:0}
+.ev .k{width:100px;font-size:11px;color:#666;flex-shrink:0}
+/* Enhancement.md 2-2/2-3: 提案は赤線、モデル連動は緑下線 */
+.ev.proposal{border-left:3px solid var(--danger);padding-left:7px;background:var(--danger-bg)}
+.ev.linked{text-decoration:underline;text-decoration-color:var(--fact);text-decoration-thickness:2px;background:var(--fact-bg)}
+.src{background:#f7f7f7;border:1px solid #ddd;border-radius:4px;padding:8px;margin-top:10px;
+     font-family:Consolas,monospace;font-size:12px;white-space:pre-wrap;max-height:40vh;overflow:auto}
+.src .hi{background:#fff59d}
+
+header button{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;
+  padding:4px 10px;font-size:12.5px;cursor:pointer}
+header button:hover{background:#2f3a52}
+#cfg{position:fixed;right:16px;top:56px;width:380px;background:#fff;color:#222;border-radius:8px;
+     box-shadow:0 8px 28px rgba(0,0,0,.45);padding:16px;display:none;z-index:120}
+#cfg h3{margin:0 0 10px;font-size:15px}
+#cfg .close{position:absolute;right:12px;top:8px;cursor:pointer;font-size:20px;line-height:1}
+#cfg .row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:13px}
+#cfg .row b{width:88px;flex-shrink:0;font-weight:600}
+#cfg input{flex:1;padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:12.5px}
+#cfg button{padding:5px 10px;border:1px solid #ccc;background:#f5f5f5;border-radius:4px;cursor:pointer;font-size:12.5px}
+#cfg button:hover{background:#e8eeff}
+#cfg .note{font-size:11px;color:#777;line-height:1.6;margin-top:4px}
+#cfg hr{border:none;border-top:1px solid #eee;margin:12px 0}
+
+#menu{position:fixed;background:#fff;color:#222;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,.35);
+      display:none;z-index:100;min-width:190px;overflow:hidden}
+#menu div{padding:9px 14px;font-size:13px;cursor:pointer}
+#menu div:hover{background:#eef2ff}
+#menu .hd{background:#f0f0f0;font-size:11px;color:#666;cursor:default;font-weight:bold}
+
+/* --- Phase 6: 1次情報の入力（追加のみ。既存定義は変更していない） --- */
+#app{position:relative}
+#tree{max-height:calc(100vh - 48px - 186px)}
+#intake{position:absolute;left:0;bottom:0;width:230px;height:186px;box-sizing:border-box;
+        background:var(--panel2);border-right:1px solid var(--line);border-top:1px solid var(--line);
+        padding:8px 9px;display:flex;flex-direction:column;gap:6px}
+#intake .ih{font-size:11.5px;font-weight:700;color:#cfd6e2;display:flex;justify-content:space-between;align-items:center}
+#intake #ik-pending{font-weight:400;font-size:10.5px;color:#8ea0b8}
+#intake textarea{width:100%;box-sizing:border-box;resize:none;font-size:11.5px;line-height:1.45;
+                 padding:5px 6px;border:1px solid var(--line);border-radius:4px;
+                 background:#1b2330;color:#e6ebf2;font-family:inherit}
+#intake textarea:focus{outline:none;border-color:#4a7fb5}
+.ik-row{display:flex;gap:5px}
+.ik-row button{flex:1;font-size:11px;padding:5px 4px;border:1px solid var(--line);border-radius:4px;
+               background:#28313f;color:#dbe3ee;cursor:pointer}
+.ik-row button:hover{background:#333e4f}
+.ik-row button:disabled{opacity:.5;cursor:default}
+#ik-log{flex:1;overflow-y:auto;font-size:10.5px;line-height:1.5;color:#9fb0c6}
+#ik-log .ok{color:#7fc99a}
+#ik-log .ng{color:#e08a8a}
+#ik-log .sk{color:#c8b57f}
+
+/* Phase 8: 推論パネル / 進捗パネル。#cfg と同じ見た目に揃える。 */
+#ask,#prg{display:none;position:fixed;right:16px;top:56px;z-index:120;width:520px;
+  max-height:calc(100vh - 80px);overflow-y:auto;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.55)}
+#prg{width:560px}
+#ask h3,#prg h3{margin:0 0 8px;font-size:14px}
+#ask .close,#prg .close{position:absolute;right:12px;top:8px;cursor:pointer;font-size:20px;line-height:1}
+#ask .row,#prg .row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12.5px}
+#ask .row b,#prg .row b{width:132px;flex-shrink:0;font-weight:600}
+#ask .note,#prg .note{font-size:11px;color:#9fb0c6;line-height:1.6;margin-top:4px}
+#ask hr,#prg hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+#ask button,#prg button{padding:4px 10px;border:1px solid var(--line);border-radius:4px;
+  background:#28313f;color:#dbe3ee;cursor:pointer;font-size:12px}
+#ask button:hover,#prg button:hover{background:#333e4f}
+#ask button:disabled,#prg button:disabled{opacity:.5;cursor:default}
+#ask textarea{width:100%;box-sizing:border-box;resize:vertical;font-size:12px;line-height:1.5;
+  background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:6px 8px;margin:6px 0}
+#ask-out{margin-top:8px;font-size:12px;line-height:1.6}
+#ask-out .fd{border-left:3px solid var(--fact);padding:4px 0 4px 8px;margin:6px 0;background:rgba(46,125,50,.08)}
+#ask-out .fd.hyp{border-left-color:#8a7a3b;background:rgba(180,150,60,.08)}
+#ask-out .fd .ty{font-size:10.5px;opacity:.75}
+#ask-out .fd .bs{font-size:10.5px;opacity:.6;margin-top:2px}
+#ask-out .ans{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:8px;margin-bottom:8px}
+#pg-bar{height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;overflow:hidden;margin:4px 0 10px}
+#pg-bar-in{height:100%;width:0;background:var(--fact);transition:width .3s}
+#pg-parts{font-size:11.5px}
+.pgrow{display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}
+.pgrow .nm{flex:1}
+.pgrow .st{width:52px;font-size:10.5px;opacity:.75}
+.pgrow .mn{font-size:10px;opacity:.6;width:38px}
+.pgrow input[type=number]{width:58px;background:var(--panel2);color:var(--fg);
+  border:1px solid var(--line);border-radius:4px;padding:2px 4px;font-size:11px}
+#md-table table{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:4px}
+#md-table td{border-bottom:1px solid var(--line);padding:2px 4px}
+
+/* Phase 9-④: 時系列パネルの幅をドラッグで変える。既定の 44% は初期値として残す。 */
+#tl-grip{position:absolute;left:0;top:0;width:8px;height:100%;cursor:col-resize;z-index:2}
+#tl-grip:hover{background:rgba(90,120,180,.35)}
+#tl-grip::after{content:"";position:absolute;left:3px;top:50%;transform:translateY(-50%);
+  width:2px;height:36px;background:#c3ccd8;border-radius:1px}
+
+/* Phase 9-⑤: 1次情報の入力欄の高さをドラッグで変える。 */
+/* Enhancement02: 案件一覧と入力欄の幅を、右端のドラッグで変える。
+   高さ用の #ik-grip（横棒）と役割が違うので、別の掴み手として用意する。 */
+#side-grip{position:absolute;top:0;width:7px;height:100%;cursor:col-resize;z-index:8}
+#side-grip:hover{background:rgba(90,120,180,.35)}
+#side-grip::after{content:"";position:absolute;left:2px;top:50%;transform:translateY(-50%);
+  width:2px;height:38px;background:#6b7a94;border-radius:1px}
+
+#ik-grip{position:absolute;left:0;top:0;width:100%;height:7px;cursor:row-resize;z-index:2}
+#ik-grip:hover{background:#4a5772}
+#ik-grip::after{content:"";position:absolute;top:2px;left:50%;transform:translateX(-50%);
+  width:34px;height:2px;background:#6b7a94;border-radius:1px}
+#intake{padding-top:13px}
+#intake textarea{resize:vertical;min-height:38px}
+/* 入力欄を広げたとき、テキスト入力が縦に伸びるようにする */
+#intake.tall textarea{flex:1}
+
+/* Phase 9-⑥: プロジェクト管理パネル */
+#prj{display:none;position:fixed;left:16px;top:56px;z-index:120;width:560px;
+  max-height:calc(100vh - 80px);overflow-y:auto;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.55)}
+#prj h3{margin:0 0 8px;font-size:14px}
+#prj .close{position:absolute;right:12px;top:8px;cursor:pointer;font-size:20px;line-height:1}
+#prj .row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12.5px}
+#prj .row b{width:96px;flex-shrink:0;font-weight:600}
+#prj .note{font-size:11px;color:#9fb0c6;line-height:1.6;margin-top:4px}
+#prj hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+#prj input[type=text]{flex:1;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+  border-radius:4px;padding:4px 7px;font-size:12px}
+#prj button{padding:4px 10px;border:1px solid var(--line);border-radius:4px;
+  background:#28313f;color:#dbe3ee;cursor:pointer;font-size:12px}
+#prj button:hover{background:#333e4f}
+#prj button:disabled{opacity:.5;cursor:default}
+#prj button.danger{border-color:#7a3b3b;background:#3a2626}
+#prj button.danger:hover{background:#4a2e2e}
+#prj-list{font-size:11.5px;max-height:300px;overflow-y:auto;margin-top:6px}
+.pjrow{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--line)}
+.pjrow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pjrow .cnt{font-size:10px;opacity:.6;width:118px;flex-shrink:0}
+.pjrow input[type=checkbox]{flex-shrink:0}
+#prj-log{font-size:11px;line-height:1.6;margin-top:6px;color:#9fb0c6}
+#prj-log .ok{color:#7fc99a}
+#prj-log .ng{color:#e08a8a}
+
+/* Phase 11-1-4: 進捗率のバッジ。3D表示の左上に既定で置く。 */
+#pgbadge{position:absolute;left:12px;top:12px;z-index:6;cursor:move;user-select:none;
+  background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.18);border-radius:8px;
+  padding:8px 12px;min-width:132px;transform-origin:top left}
+#pgbadge .pb-lab{font-size:10.5px;opacity:.7;letter-spacing:.04em}
+#pgbadge .pb-val{font-size:26px;font-weight:700;line-height:1.15}
+#pgbadge .pb-unit{font-size:13px;font-weight:400;opacity:.75;margin-left:2px}
+#pgbadge .pb-bar{height:6px;background:rgba(255,255,255,.16);border-radius:3px;overflow:hidden;margin:4px 0 3px}
+#pgbadge .pb-in{height:100%;width:0;background:var(--fact);transition:width .3s}
+#pgbadge .pb-sub{font-size:10px;opacity:.65;line-height:1.4}
+
+/* Phase 11-1-1: イメージ図の編集パネル */
+#ill{display:none;position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:130;
+  width:720px;max-height:calc(100vh - 76px);overflow-y:auto;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+#ill h3{margin:0 0 8px;font-size:14px}
+#ill h3 .note{margin-left:8px;font-weight:400}
+#ill .close{position:absolute;right:12px;top:8px;cursor:pointer;font-size:20px;line-height:1}
+#ill .row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12.5px}
+#ill .row b{width:76px;flex-shrink:0;font-weight:600}
+#ill .note{font-size:11px;color:#9fb0c6;line-height:1.6}
+#ill hr{border:none;border-top:1px solid var(--line);margin:10px 0}
+#ill button{padding:4px 10px;border:1px solid var(--line);border-radius:4px;
+  background:#28313f;color:#dbe3ee;cursor:pointer;font-size:12px}
+#ill button:hover{background:#333e4f}
+#ill button:disabled{opacity:.5;cursor:default}
+#ill input[type=text],#ill select{flex:1;background:var(--panel2);color:var(--ink);
+  border:1px solid var(--line);border-radius:4px;padding:4px 7px;font-size:12px}
+#ill input[type=range]{flex:1}
+#ill-view{background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:8px}
+#ill-view svg{width:100%;height:auto;display:block}
+#ill-notes span{display:inline-block;background:#3a2626;border:1px solid #7a3b3b;border-radius:4px;
+  padding:2px 6px;margin:2px 4px 2px 0;cursor:pointer}
+
+/* 時系列の空欄に差し込むイメージ図（Enhancement02.md 1-1） */
+.tl-illust{margin:8px 0 12px;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff}
+.tl-illust svg{width:100%;height:auto;display:block}
+.tl-illust .cap{font-size:11px;color:#666;padding:4px 8px;background:#f7f7f7;border-top:1px solid #eee}
+</style>
+</head>
+<body>
+<header>
+  <h1>Project_Tree</h1>
+  <select id="genmode" title="モデル生成方式">
+    <option value="local">生成: ローカル（費用 0 円）</option>
+    <option value="meshy">生成: Meshy API（有料・要キー）</option>
+  </select>
+  <button id="btn-cfg" title="APIキー・予算の設定">⚙ 設定</button>
+  <button id="btn-ask" title="台帳の証拠だけを根拠にLLMが推論します">💡 推論</button>
+  <button id="btn-prg" title="部材の進捗一覧と全体進捗">🏗 進捗</button>
+  <button id="btn-prj" title="案件の作成・改名・統合・削除">📁 案件</button>
+  <span class="meta" id="meta">読み込み中…</span>
+</header>
+
+<div id="cfg">
+  <span class="close" onclick="document.getElementById('cfg').style.display='none'">&times;</span>
+  <h3>設定</h3>
+  <div class="row"><b>APIキー</b><span id="cfg-key">-</span></div>
+  <div class="row">
+    <input type="password" id="cfg-input" placeholder="sk-ant-…（メモリのみ・保存しません）">
+    <button id="cfg-save">設定</button>
+    <button id="cfg-clear">消去</button>
+  </div>
+  <div class="note">キーはメモリ上だけで保持し、ディスクにもログにも書きません。画面表示は末尾4文字のみです。</div>
+  <hr>
+  <div class="row"><b>1日の予算</b><span id="cfg-budget">-</span></div>
+  <div class="row"><b>本日の使用</b><span id="cfg-spent">-</span></div>
+  <hr>
+  <div class="row"><b>推定原価</b><span id="cfg-est">-</span></div>
+  <div class="note">解析を実行する前に、その処理でかかる概算費用を提示します。</div>
+  <hr>
+  <div class="row"><b>接続先</b><span id="pv-name">-</span></div>
+  <div class="row"><b>Orcaキー</b><span id="pv-key">-</span></div>
+  <div class="row">
+    <input type="password" id="pv-input" placeholder="sk-orca-…（メモリのみ・保存しません）">
+    <button id="pv-save">設定</button>
+    <button id="pv-clear">消去</button>
+  </div>
+  <div class="row">
+    <button id="pv-use-anthropic">Anthropic直に切替</button>
+    <button id="pv-probe">疎通確認</button>
+  </div>
+  <div id="pv-models" class="note"></div>
+  <div class="note">Anthropic 直が利用上限のときは、SDK互換のプロキシ（Orca Router）へ切り替えて同じ解析を実行できます。</div>
+  <hr>
+  <div class="row"><b>モデル系統</b>
+    <select id="md-family">
+      <option value="claude">Claude（Haiku/Sonnet/Opus）</option>
+      <option value="qwen">Qwen（Orca経由）</option>
+      <option value="codex">codex（Orca経由）</option>
+    </select>
+    <button id="md-probe">別系統の疎通確認</button>
+  </div>
+  <div id="md-table" class="note"></div>
+</div>
+
+<!-- proposal.md 2-1: プロンプト入力 → LLM 推論 -->
+<div id="ask">
+  <span class="close" onclick="document.getElementById('ask').style.display='none'">&times;</span>
+  <h3>LLMによる推論</h3>
+  <div class="note">台帳から SQL が選んだ証拠だけを根拠にします。根拠を引けなかった主張は「仮説」として分けて表示します。</div>
+  <textarea id="ask-q" rows="3" placeholder="例: 工程が遅れている原因は何か。進捗率を上げるために何ができるか。"></textarea>
+  <div class="row">
+    <button id="ask-est">見積りだけ出す（無料）</button>
+    <button id="ask-run">推論を実行</button>
+    <label title="社外秘などのラベルがあっても送信する"><input type="checkbox" id="ask-allow"> 機密ラベルを無視</label>
+  </div>
+  <div id="ask-cost" class="note"></div>
+  <div id="ask-out"></div>
+  <hr>
+  <div class="row"><button id="ask-stage">ルールで分類できない記録をLLMで段階分類（2-2）</button></div>
+  <div id="ask-stage-out" class="note"></div>
+</div>
+
+<!-- proposal.md Part2 2-2: 3D進捗管理の5機能 -->
+<div id="prg">
+  <span class="close" onclick="document.getElementById('prg').style.display='none'">&times;</span>
+  <h3>3D進捗管理</h3>
+  <div class="row"><b>1. 基本構造の追加</b>
+    <select id="pg-preset"></select>
+    <button id="pg-add">追加（費用 0 円）</button>
+  </div>
+  <div class="row"><b>2. 写真から作成</b>
+    <button id="pg-photo-pick">写真を選ぶ</button>
+    <input type="file" id="pg-photo" accept="image/jpeg,image/png,image/webp" style="display:none">
+    <span id="pg-photo-name" class="note"></span>
+  </div>
+  <div class="row"><b>3. 図面・モデル取込</b>
+    <button id="pg-imp-pick">ファイルを選ぶ</button>
+    <input type="file" id="pg-imp" multiple
+           accept=".dxf,.svg,.dwg,.pdf,.glb,.gltf,.stl,.obj,.ply,.ifc,.step,.stp" style="display:none">
+  </div>
+  <div id="pg-log" class="note"></div>
+  <hr>
+  <div class="row"><b>5. 全体進捗</b><span id="pg-overall">-</span></div>
+  <div id="pg-bar"><div id="pg-bar-in"></div></div>
+  <div class="note">4. 部材の進捗一覧（数値を直接編集できます。編集した部材は台帳同期の対象外になります）</div>
+  <div id="pg-parts"></div>
+  <hr>
+  <div class="row"><button id="pg-link">部位と記録をLLMで対応づけ（2-4）</button></div>
+  <div id="pg-link-out" class="note"></div>
+  <hr>
+  <div class="row"><b>Blender 連携</b><span id="bl-state" class="note">未確認</span>
+    <button id="bl-check">接続確認</button>
+  </div>
+  <div class="row">
+    <button id="bl-build">台帳の寸法で組み立て</button>
+    <button id="bl-sync">表示段階を同期</button>
+    <button id="bl-export">GLBで受け取る</button>
+  </div>
+  <div id="bl-log" class="note"></div>
+</div>
+
+<!-- Phase 9-⑥: 案件の作成・改名・統合・削除 -->
+<div id="prj">
+  <span class="close" onclick="document.getElementById('prj').style.display='none'">&times;</span>
+  <h3>案件の管理</h3>
+  <div class="row"><b>新規作成</b>
+    <input type="text" id="pj-new" placeholder="例: 第二排水路改修工事">
+    <button id="pj-create">作成</button>
+  </div>
+  <div class="note">空の案件を作ります。以後この案件を選んで資料やメモを取り込むと時系列が育ちます。</div>
+  <hr>
+  <div class="row"><b>フォルダから作成</b>
+    <button id="pj-folder">プロジェクトフォルダを選ぶ</button>
+    <input type="file" id="pj-folder-input" webkitdirectory directory multiple style="display:none">
+  </div>
+  <div class="note" id="pj-folder-spec">フォルダ名がそのまま案件名になります。LLM を使わないので原価は 0 です。</div>
+  <div id="pj-folder-log" class="note"></div>
+  <hr>
+  <div class="row"><b>選択中の案件</b><span id="pj-cur" class="note">-</span></div>
+  <div class="row"><b>名前を変更</b>
+    <input type="text" id="pj-rename" placeholder="新しい案件名">
+    <button id="pj-do-rename">変更</button>
+  </div>
+  <div class="row"><b>別名</b>
+    <input type="text" id="pj-alias" placeholder="表記ゆれをカンマ区切りで（名寄せが拾います）">
+    <button id="pj-do-alias">保存</button>
+  </div>
+  <hr>
+  <div class="note">一覧（チェックした案件を、選択中の案件へ統合できます。割れてしまった案件をまとめる用）</div>
+  <div id="prj-list"></div>
+  <div class="row">
+    <button id="pj-merge">チェックを選択中の案件へ統合</button>
+    <button id="pj-delete" class="danger">チェックした案件を削除</button>
+  </div>
+  <hr>
+  <div class="row"><b>デモ表示</b>
+    <input type="text" id="pj-demo-kw" placeholder="表示したい案件名のキーワード（カンマ区切り）" value="橋梁,護岸">
+    <button id="pj-demo-apply">この案件だけ表示</button>
+  </div>
+  <div class="row">
+    <button id="pj-demo-checked">チェックした案件だけ表示</button>
+    <button id="pj-demo-all">全案件を表示に戻す</button>
+    <span id="pj-demo-state" class="note"></span>
+  </div>
+  <div class="note">表示を絞るだけで、データは消しません。いつでも元に戻せます。</div>
+  <hr>
+  <div class="row"><button id="pj-dedup">同名で割れた案件を自動でまとめる</button>
+    <span id="pj-dup-count" class="note"></span>
+  </div>
+  <div class="note">解析を繰り返すと、同じ名前の案件が複数に割れることがあります。モデルや段階を持つ案件を残して1つにまとめます。</div>
+  <div id="prj-log"></div>
+</div>
+
+<div id="app">
+  <nav id="tree"></nav>
+  <!-- 案件一覧と入力欄の幅を左ドラッグで変える。ダブルクリックで既定に戻る。 -->
+  <div id="side-grip" title="左右にドラッグで幅を変えられます（ダブルクリックで既定に戻す）"></div>
+  <div id="intake">
+    <div id="ik-grip" title="上下にドラッグで入力欄の高さを変えられます"></div>
+    <div class="ih">1次情報の入力<span id="ik-pending"></span></div>
+    <textarea id="ik-prompt" rows="3" placeholder="メモ・気づき・指示を入力（例: 護岸ブロックの据付が雨天で2日遅れ）"></textarea>
+    <div class="ik-row">
+      <button id="ik-send">台帳へ取込</button>
+      <button id="ik-pick">資料/画像</button>
+      <button id="ik-pick-dir" title="フォルダ内の対応ファイルをまとめて取り込みます">フォルダ</button>
+      <button id="ik-pick-img" title="画像をLLMに読ませ、記述文を台帳へ入れます（原価を先に提示）">画像を解析</button>
+      <input type="file" id="ik-img" multiple accept=".jpg,.jpeg,.png,.webp" style="display:none">
+    </div>
+    <div class="ik-row">
+      <button id="ik-run" title="推論・資料用画像・段階整理・2D/3Dモデル・進捗率までを一括で作ります（原価を先に提示）">▶ 出力</button>
+      <input type="file" id="ik-file" multiple
+             accept=".txt,.md,.pdf,.docx,.pptx,.jpg,.jpeg,.png" style="display:none">
+      <input type="file" id="ik-dir" webkitdirectory directory multiple style="display:none">
+    </div>
+    <div id="ik-log"></div>
+  </div>
+  <div id="stage">
+    <div id="top"></div>
+    <div id="splitter"></div>
+    <div id="bottom">
+      <div id="viewport">
+        <canvas id="cv"></canvas>
+        <!-- Enhancement02.md 1-4: 進捗率を既定で左上に出す。ドラッグで移動、ホイールで拡大縮小。 -->
+        <div id="pgbadge" title="ドラッグで移動 / ホイールで大きさ変更 / ダブルクリックで既定に戻す">
+          <div class="pb-lab">全体進捗</div>
+          <div class="pb-val">--<span class="pb-unit">%</span></div>
+          <div class="pb-bar"><div class="pb-in"></div></div>
+          <div class="pb-sub">案件を選んでください</div>
+        </div>
+        <div id="hud">案件を選んでください。</div>
+        <div id="toolbar">
+          <label><input type="checkbox" id="show2d"> 2D平面図を表示</label>
+          <label>表示段階: <span id="stlab">完成形</span></label>
+          <input type="range" id="stage-range" min="1" max="6" value="6" step="1">
+        </div>
+      </div>
+      <div id="svgpane"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tl"><div id="tl-grip" title="左右にドラッグで表示幅を変えられます"></div><span class="close" onclick="closeTl()">&times;</span><div id="tlbody"></div></div>
+
+<!-- Enhancement02.md 1-1: イメージ図の編集（位置・大きさ・注意書き） -->
+<div id="ill">
+  <span class="close" onclick="document.getElementById('ill').style.display='none'">&times;</span>
+  <h3>イメージ図の編集<span id="ill-stage" class="note"></span></h3>
+  <div id="ill-view"></div>
+  <div class="row">
+    <button id="ill-gen">作り直す（LLM）</button>
+    <button id="ill-photo-pick">写真を使って作る</button>
+    <input type="file" id="ill-photo" multiple accept=".jpg,.jpeg,.png,.webp" style="display:none">
+    <button id="ill-reset">編集を破棄</button>
+  </div>
+  <div id="ill-cost" class="note"></div>
+  <hr>
+  <div class="note">オブジェクトを選び、位置と大きさを変えられます。編集は資料（pptx / pdf / word）にも反映されます。</div>
+  <div class="row"><b>対象</b><select id="ill-obj"></select>
+    <label><input type="checkbox" id="ill-hide"> 隠す</label>
+  </div>
+  <div class="row"><b>左右</b><input type="range" id="ill-dx" min="-300" max="300" value="0" step="5"><span id="ill-dx-v" class="note">0</span></div>
+  <div class="row"><b>上下</b><input type="range" id="ill-dy" min="-200" max="200" value="0" step="5"><span id="ill-dy-v" class="note">0</span></div>
+  <div class="row"><b>大きさ</b><input type="range" id="ill-sc" min="30" max="250" value="100" step="5"><span id="ill-sc-v" class="note">100%</span></div>
+  <hr>
+  <div class="row"><b>注意書き</b><input type="text" id="ill-note" placeholder="例: ※ 8/31 期限を要確認">
+    <button id="ill-note-add">追加</button>
+  </div>
+  <div id="ill-notes" class="note"></div>
+  <div class="row"><button id="ill-save">編集を保存</button></div>
+  <div id="ill-log" class="note"></div>
+</div>
+<div id="menu"></div>
+
+<script type="importmap">
+{"imports":{
+ "three":"/static/lib/three.module.js",
+ "three/addons/":"/static/lib/addons/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const STAGE_NAMES = ['','状況確認','現状の課題','試行錯誤','課題・変化','解決策、発展策の提案'];
+let curThread=null, curStages=[], curParts=[], curAssets=[], meshes=[];
+
+const esc = s => { const d=document.createElement('div'); d.textContent = s==null?'':String(s); return d.innerHTML; };
+const $ = id => document.getElementById(id);
+
+// ---------- three.js ----------
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x1b2230);
+const cam=new THREE.PerspectiveCamera(55,1,.1,3000);
+const cv=$('cv');
+const rend=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+const ctl=new OrbitControls(cam,rend.domElement);
+// 既定は右ドラッグ=PAN。右クリックメニューを出すため PAN を中ボタン側に寄せる
+ctl.mouseButtons={LEFT:THREE.MOUSE.ROTATE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:null};
+scene.add(new THREE.HemisphereLight(0xffffff,0x33405a,1.15));
+const dl=new THREE.DirectionalLight(0xffffff,1.15); dl.position.set(25,35,20); scene.add(dl);
+scene.add(new THREE.GridHelper(120,60,0x51607d,0x333e55));
+
+function resize(){
+  const r=$('viewport').getBoundingClientRect();
+  if(r.width<2||r.height<2) return;
+  rend.setSize(r.width,r.height,false);
+  cam.aspect=r.width/r.height; cam.updateProjectionMatrix();
+}
+addEventListener('resize',resize);
+rend.setAnimationLoop(()=>{ctl.update();rend.render(scene,cam);});
+
+function fitCamera(){
+  if(!meshes.length) return;
+  const b=new THREE.Box3(); meshes.forEach(m=>b.expandByObject(m));
+  const s=new THREE.Vector3(), c=new THREE.Vector3(); b.getSize(s); b.getCenter(c);
+  const d=Math.max(s.x,s.y,s.z)||10;
+  cam.position.set(c.x+d*1.1, c.y+d*0.85, c.z+d*1.35);
+  ctl.target.copy(c); ctl.update();
+}
+
+function clearScene(){
+  meshes.forEach(m=>{ let o=m; while(o.parent && o.parent!==scene) o=o.parent; scene.remove(o); });
+  meshes=[];
+}
+
+function loadGlb(url){
+  clearScene();
+  new GLTFLoader().load(url, g=>{
+    g.scene.traverse(o=>{
+      if(!o.isMesh) return;
+      // trimesh製GLBは法線を持たない。これが無いと真っ黒になる（検証で確認済み）
+      if(!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+      const key=o.name||o.parent?.name||'?';
+      const part=curParts.find(p=>p.part_key===key);
+      o.material=new THREE.MeshStandardMaterial({color:0x8ab4f8,metalness:.08,roughness:.82});
+      o.userData.partKey=key;
+      o.userData.stage=part?part.stage_no:0;
+      o.userData.name=part?part.name:key;
+      o.userData.base=o.material.color.clone();
+      meshes.push(o);
+    });
+    scene.add(g.scene);
+    resize(); fitCamera();
+    $('hud').textContent=`3Dモデル: ${meshes.length} 部位（クリックで段階と連動 / 右クリックでダウンロード）`;
+  }, undefined, e=>{ $('hud').textContent='モデル読込に失敗: '+e; });
+}
+
+// ---------- データ読み込み ----------
+async function loadTree(){
+  const rows=await (await fetch('/api/projecttree/threads')).json();
+  const tree=$('tree'); tree.innerHTML='';
+  rows.forEach(t=>{
+    const d=document.createElement('div');
+    d.className='t-item'; d.dataset.id=t.thread_id;
+    d.innerHTML=`${esc(t.name)}<div class="t-sub">記録 ${t.event_count} 件 / 部位 ${t.part_count}</div>`;
+    d.onclick=()=>selectThread(t.thread_id,d);
+    tree.appendChild(d);
+  });
+  $('meta').textContent=`${rows.length} 案件`;
+  if(rows.length) tree.firstChild.click();
+}
+
+async function selectThread(tid, el){
+  curThread=tid;
+  document.querySelectorAll('.t-item').forEach(e=>e.classList.remove('active'));
+  el?.classList.add('active');
+
+  const [st,pt,as]=await Promise.all([
+    fetch(`/api/projecttree/stages?thread_id=${tid}`).then(r=>r.ok?r.json():{stages:[],gaps:[]}),
+    fetch(`/api/projecttree/parts?thread_id=${tid}`).then(r=>r.json()),
+    fetch(`/api/projecttree/assets?thread_id=${tid}`).then(r=>r.json()),
+  ]);
+  curStages=st.stages||[]; curParts=pt; curAssets=as;
+
+  renderCards();
+  const full=as.find(a=>a.kind==='3d'&&a.fmt==='glb'&&a.stage_no===null);
+  if(full) loadGlb(full.url); else { clearScene(); $('hud').textContent='この案件には3Dモデルがありません。'; }
+  const svg=as.find(a=>a.kind==='2d'&&a.fmt==='svg');
+  if(svg) load2d(svg.url); else $('svgpane').innerHTML='';
+  $('stage-range').value=6; $('stlab').textContent='完成形';
+  loadProgressBadge();
+}
+
+function renderCards(){
+  const top=$('top'); top.innerHTML='';
+  curStages.forEach(s=>{
+    const c=document.createElement('div');
+    c.className='card'+(s.stage_no===5?' proposal':'');
+    c.dataset.stage=s.stage_no;
+    // 資料用画像（proposal.md 2-3 / Enhancement02.md 1-1）。
+    // イメージ図があればそれを出し、無ければ従来の資料用画像へ自動で切り替える。
+    // pptx / pdf / word に貼るものと同じ絵になる。
+    const tq=encodeURIComponent(curThread);
+    const illust=`/api/projecttree/illust/png?thread_id=${tq}&stage_no=${s.stage_no}`;
+    const slide=`/api/projecttree/slides/${tq}/${s.stage_no}.png`;
+    c.innerHTML=`<div class="c-no">段階 ${s.stage_no}</div>
+      <div class="c-title">${esc(s.title)}</div>
+      <img class="c-img" src="${illust}" alt="段階${s.stage_no}の資料用画像"
+           data-fallback="${slide}">
+      <div class="c-sum">${esc(s.summary)}</div>
+      <div class="c-cnt">記録 ${s.events.length} 件 ・ ${s.method==='rule'?'ルール分類':'LLM分類'}</div>`;
+    const im=c.querySelector('img.c-img');
+    im.onerror=()=>{ im.onerror=null; im.src=im.dataset.fallback; };
+    c.onclick=()=>{ highlightStage(s.stage_no); openTimeline(s.stage_no); };
+    // 画像そのものをダブルクリックしたらイメージ図の編集を開く
+    im.ondblclick=ev=>{ ev.stopPropagation(); openIllust(s.stage_no); };
+    c.oncontextmenu=e=>{ e.preventDefault(); showMenu(e.clientX,e.clientY,'stage',s.stage_no); };
+    top.appendChild(c);
+  });
+  applyCardScale();
+}
+
+// ---------- 相互ハイライト ----------
+function highlightStage(no){
+  document.querySelectorAll('.card').forEach(c=>{
+    c.classList.toggle('linked', +c.dataset.stage===no);
+  });
+  meshes.forEach(m=>{
+    const on=m.userData.stage===no;
+    m.material.color.copy(on?new THREE.Color(0x4caf50):m.userData.base);
+  });
+  $('svgpane').querySelectorAll('.pt-part').forEach(p=>{
+    p.setAttribute('fill', +p.dataset.stage===no ? '#4caf50' : '#8ab4f8');
+  });
+  const names=meshes.filter(m=>m.userData.stage===no).map(m=>m.userData.name);
+  $('hud').textContent=`段階${no}「${STAGE_NAMES[no]}」 対応部位: ${names.join('、')||'なし'}`;
+}
+
+function load2d(url){
+  fetch(url).then(r=>r.text()).then(t=>{
+    const pane=$('svgpane'); pane.innerHTML=t;
+    pane.querySelectorAll('.pt-part').forEach(p=>{
+      p.onclick=()=>{ const st=+p.dataset.stage; highlightStage(st); openTimeline(st); };
+      p.oncontextmenu=e=>{ e.preventDefault(); showMenu(e.clientX,e.clientY,'2d'); };
+    });
+  });
+}
+
+// ---------- 時系列パネル ----------
+function openTimeline(stageNo){
+  const s=curStages.find(x=>x.stage_no===stageNo);
+  if(!s) return;
+  const isProposal = stageNo===5;
+  let h=`<h3>段階${s.stage_no}　${esc(s.title)}</h3>
+    <div style="font-size:12px;color:#666;margin-bottom:10px">${esc(s.summary)}</div>`;
+  if(!s.events.length) h+='<div style="color:#999">この段階に紐づく記録はありません。</div>';
+  s.events.forEach(e=>{
+    h+=`<div class="ev${isProposal?' proposal':''}" data-doc="${esc(e.doc_id)}"
+          data-s="${e.source.start_line}" data-e="${e.source.end_line}">
+      <div class="d">${esc(e.occurred_on)}</div><div class="k">${esc(e.kind)}</div>
+      <div>${esc(e.summary)}</div></div>`;
+  });
+  // Enhancement02.md 1-1: 時系列と文章の下の空きにイメージ図を差す
+  h+=`<div class="tl-illust" id="tl-illust"></div>`;
+  $('tlbody').innerHTML=h;
+  $('tlbody').querySelectorAll('.ev').forEach(row=>{
+    row.onclick=()=>showSource(row.dataset.doc,row.dataset.s,row.dataset.e,row);
+    row.oncontextmenu=ev=>{ ev.preventDefault(); showMenu(ev.clientX,ev.clientY,'timeline',stageNo); };
+  });
+  $('tl').classList.add('open');
+  loadTimelineIllust(stageNo);
+}
+
+async function loadTimelineIllust(stageNo){
+  const box=$('tl-illust');
+  if(!box || !curThread) return;
+  try{
+    const r=await fetch(`/api/projecttree/illust/svg?thread_id=${encodeURIComponent(curThread)}`
+                        +`&stage_no=${stageNo}`);
+    if(!r.ok){ box.remove(); return; }
+    box.innerHTML=await r.text()
+      + `<div class="cap">この段階のイメージ図（クリックで編集）</div>`;
+    box.style.cursor='pointer';
+    box.onclick=()=>openIllust(stageNo);
+  }catch(e){ box.remove(); }
+}
+window.closeTl=()=>$('tl').classList.remove('open');
+
+async function showSource(docId,s,e,row){
+  const d=await (await fetch(`/api/source/${docId}?start_line=${s}&end_line=${e}&context=4`)).json();
+  let h=`<div class="src">`;
+  d.lines.forEach(l=>{ h+=`<div class="${l.highlighted?'hi':''}">${String(l.line).padStart(4)}: ${esc(l.text)}</div>`; });
+  h+=`</div>`;
+  row.querySelectorAll('.src').forEach(x=>x.remove());
+  row.insertAdjacentHTML('afterend',h);
+}
+
+// ---------- 3D 左クリック / 右クリック ----------
+const ray=new THREE.Raycaster(), pt=new THREE.Vector2();
+function pick(e){
+  const r=cv.getBoundingClientRect();
+  pt.x=((e.clientX-r.left)/r.width)*2-1;
+  pt.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(pt,cam);
+  return ray.intersectObjects(meshes,true)[0]||null;
+}
+cv.addEventListener('pointerdown',e=>{
+  if(e.button!==0) return;
+  const hit=pick(e);
+  if(!hit) return;
+  const st=hit.object.userData.stage;
+  highlightStage(st);
+  openTimeline(st);
+  $('hud').textContent=`部位「${hit.object.userData.name}」→ 段階${st}「${STAGE_NAMES[st]}」`;
+});
+cv.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  const hit=pick(e);
+  showMenu(e.clientX,e.clientY,'3d',hit?hit.object.userData.stage:null);
+});
+
+// ---------- 右クリックメニュー ----------
+const MENUS={
+  '3d':  ['3Dモデルをダウンロード', [['glb','GLB（表示用）'],['stl','STL'],['dxf','DXF']]],
+  '2d':  ['2Dモデルをダウンロード', [['svg','SVG'],['dxf','DXF']]],
+  'stage':['資料をダウンロード',    [['pptx_img','pptx（資料用画像スライド）'],['pptx','pptx（プレゼン資料）'],
+                                    ['pdf','pdf（会議用資料・画像入り）'],['docx','word（会議用資料・画像入り）'],
+                                    ['xlsx','xlsx（表・グラフ）'],['md','md（時系列と原文）']]],
+  'timeline':['時系列をダウンロード',[['md','md（時系列と原文）'],['pdf','pdf（会議用資料）'],
+                                    ['docx','word（会議用資料）'],['pptx_img','pptx（資料用画像）'],['xlsx','xlsx']]],
+};
+function showMenu(x,y,kind,stageNo){
+  const [title,items]=MENUS[kind];
+  const m=$('menu');
+  m.innerHTML=`<div class="hd">${title}</div>`+
+    items.map(([f,l])=>`<div data-f="${f}">${l}</div>`).join('');
+  m.style.left=Math.min(x,innerWidth-210)+'px';
+  m.style.top=Math.min(y,innerHeight-180)+'px';
+  m.style.display='block';
+  m.querySelectorAll('div[data-f]').forEach(d=>{
+    d.onclick=()=>{ m.style.display='none'; download(kind,d.dataset.f,stageNo); };
+  });
+}
+addEventListener('click',()=>{$('menu').style.display='none'});
+
+function download(kind,fmt,stageNo){
+  if(kind==='3d'||kind==='2d'){
+    const a=curAssets.find(x=>x.fmt===fmt&&(stageNo?x.stage_no===stageNo:x.stage_no===null))
+         || curAssets.find(x=>x.fmt===fmt);
+    if(a){ const l=document.createElement('a'); l.href=a.url; l.download=''; l.click(); return; }
+  }
+  // 資料出力（md/pdf/word/pptx/xlsx）はサーバで生成して受け取る。
+  // export2 は既存 export の全形式に pdf / word / 画像入りpptx を足したもの。
+  if(!curThread){ $('hud').textContent='案件を選んでください。'; return; }
+  const q=new URLSearchParams({thread_id:curThread,fmt});
+  if(kind==='stage'&&stageNo) q.set('stage_no',stageNo);
+  $('hud').textContent=`${fmt} を生成しています…`;
+  const l=document.createElement('a');
+  l.href='/api/projecttree/export2?'+q.toString();
+  l.download='';
+  l.click();
+  setTimeout(()=>{ $('hud').textContent=`${fmt} をダウンロードしました。`; },600);
+}
+
+// ---------- 段階スライダ / 2D表示 ----------
+$('stage-range').oninput=e=>{
+  const v=+e.target.value;
+  $('stlab').textContent = v>=6 ? '完成形' : `段階${v}まで`;
+  meshes.forEach(m=>{
+    const vis = v>=6 || m.userData.stage<=v;
+    m.visible=vis;
+  });
+};
+$('show2d').onchange=e=>{
+  $('svgpane').style.display=e.target.checked?'block':'none';
+  setTimeout(resize,0);
+};
+
+// ---------- 上下比率のドラッグ ----------
+(()=>{
+  const sp=$('splitter'), top=$('top');
+  let drag=false;
+  sp.addEventListener('mousedown',()=>{drag=true;document.body.style.userSelect='none';});
+  addEventListener('mouseup',()=>{if(drag){drag=false;document.body.style.userSelect='';resize();}});
+  addEventListener('mousemove',e=>{
+    if(!drag) return;
+    const rect=$('stage').getBoundingClientRect();
+    const pct=Math.min(70,Math.max(12,((e.clientY-rect.top)/rect.height)*100));
+    top.style.height=pct+'%';
+    resize();
+  });
+})();
+
+$('genmode').onchange=e=>{
+  $('hud').textContent = e.target.value==='local'
+    ? 'モデル生成: ローカル（trimesh/ezdxf・追加費用 0 円）'
+    : 'モデル生成: Meshy API — 画像1枚あたり有料。APIキーの設定が必要です。';
+};
+
+// ---------- 設定パネル（APIキー・予算・推定原価） ----------
+async function loadConfig(){
+  const c=await (await fetch('/api/config')).json();
+  $('cfg-key').textContent=c.api_key_masked;
+  $('cfg-budget').textContent=`${c.budget_daily_jpy} 円`;
+  $('cfg-spent').textContent=`${c.budget_spent_jpy} 円（残 ${c.budget_remaining_jpy} 円）`;
+  const e=await (await fetch('/api/config/estimate?model=claude-opus-5&input_tokens=200000&output_tokens=10000')).json();
+  $('cfg-est').textContent=`約 ${e.jpy} 円（$${e.usd}）／ 予算内: ${e.within_budget?'はい':'いいえ'}`;
+}
+$('btn-cfg').onclick=()=>{
+  const p=$('cfg');
+  const open=p.style.display!=='block';
+  p.style.display=open?'block':'none';
+  if(open) loadConfig();
+};
+$('cfg-save').onclick=async()=>{
+  const v=$('cfg-input').value.trim();
+  if(!v){ alert('APIキーを入力してください'); return; }
+  const r=await fetch('/api/config/api_key',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:v})});
+  if(r.ok){ $('cfg-input').value=''; loadConfig(); } else { alert('設定に失敗しました'); }
+};
+$('cfg-clear').onclick=async()=>{
+  await fetch('/api/config/api_key',{method:'DELETE'});
+  loadConfig();
+};
+
+// ---------- Phase 6: 1次情報の入力（Enhancement.md §2-1） ----------
+function ikLog(msg, cls){
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent=msg;
+  $('ik-log').prepend(d);
+}
+
+async function ikStatus(){
+  try{
+    const s=await (await fetch('/api/projecttree/intake/status')).json();
+    $('ik-pending').textContent = s.pending_extraction>0
+      ? `資料${s.documents}件 / 未解析${s.pending_extraction}` : `資料${s.documents}件`;
+  }catch(e){}
+}
+
+$('ik-send').onclick=async()=>{
+  const v=$('ik-prompt').value.trim();
+  if(!v){ ikLog('入力が空です','ng'); return; }
+  const btn=$('ik-send'); btn.disabled=true; btn.textContent='取込中…';
+  try{
+    const fd=new FormData(); fd.append('prompt',v);
+    if(curThread) fd.append('thread_id',curThread);
+    const r=await fetch('/api/projecttree/intake/prompt',{method:'POST',body:fd});
+    const j=await r.json();
+    if(!r.ok){ ikLog(j.detail||'取込に失敗しました','ng'); }
+    else if(j.status==='skipped'){ ikLog('同一内容が既にあります','sk'); }
+    else { ikLog(`取込: ${j.title}`,'ok'); $('ik-prompt').value=''; }
+    ikStatus();
+  }catch(e){ ikLog('通信エラー','ng'); }
+  finally{ btn.disabled=false; btn.textContent='台帳へ取込'; }
+};
+
+$('ik-pick').onclick=()=>$('ik-file').click();
+
+$('ik-file').onchange=async e=>{
+  const files=[...e.target.files];
+  if(!files.length) return;
+  const btn=$('ik-pick'); btn.disabled=true; btn.textContent='取込中…';
+  try{
+    const fd=new FormData();
+    files.forEach(f=>fd.append('files',f));
+    if(curThread) fd.append('thread_id',curThread);
+    const r=await fetch('/api/projecttree/intake/files',{method:'POST',body:fd});
+    const j=await r.json();
+    (j.results||[]).forEach(x=>{
+      if(x.status==='added')        ikLog(`取込: ${x.filename}`,'ok');
+      else if(x.status==='skipped') ikLog(`重複: ${x.filename}`,'sk');
+      else                          ikLog(`拒否: ${x.filename} — ${x.reason}`,'ng');
+    });
+    ikStatus();
+  }catch(err){ ikLog('通信エラー','ng'); }
+  finally{ btn.disabled=false; btn.textContent='資料/画像'; e.target.value=''; }
+};
+
+// ---------- Phase 8-1: フォルダ取込（proposal.md §1-1） ----------
+// webkitdirectory は選んだフォルダ配下を再帰的に列挙する。対応拡張子だけへ絞り、
+// 1リクエストが大きくなりすぎないよう分割して送る。
+const IK_EXT = ['.txt','.md','.pdf','.docx','.pptx','.jpg','.jpeg','.png'];
+const IK_BATCH = 20;
+
+$('ik-pick-dir').onclick=()=>$('ik-dir').click();
+
+$('ik-dir').onchange=async e=>{
+  const all=[...e.target.files];
+  if(!all.length) return;
+  const files=all.filter(f=>IK_EXT.some(x=>f.name.toLowerCase().endsWith(x)));
+  const skipped=all.length-files.length;
+  if(!files.length){ ikLog(`対応ファイルなし（${all.length}件を確認）`,'ng'); e.target.value=''; return; }
+  ikLog(`フォルダ: 対象${files.length}件${skipped?` / 対象外${skipped}件`:''}`,'sk');
+
+  const btn=$('ik-pick-dir'); btn.disabled=true;
+  let added=0, dup=0, ng=0;
+  try{
+    for(let i=0;i<files.length;i+=IK_BATCH){
+      const chunk=files.slice(i,i+IK_BATCH);
+      btn.textContent=`${i+chunk.length}/${files.length}`;
+      const fd=new FormData();
+      chunk.forEach(f=>fd.append('files',f));
+      if(curThread) fd.append('thread_id',curThread);
+      const r=await fetch('/api/projecttree/intake/files',{method:'POST',body:fd});
+      const j=await r.json();
+      (j.results||[]).forEach(x=>{
+        if(x.status==='added')        added++;
+        else if(x.status==='skipped') dup++;
+        else { ng++; ikLog(`拒否: ${x.filename} — ${x.reason}`,'ng'); }
+      });
+    }
+    ikLog(`フォルダ取込 完了: 追加${added} / 重複${dup} / 拒否${ng}`, added?'ok':'sk');
+    ikStatus();
+  }catch(err){ ikLog('通信エラー','ng'); }
+  finally{ btn.disabled=false; btn.textContent='フォルダ'; e.target.value=''; }
+};
+
+// ---------- Phase 7: LLM プロバイダ切替（Anthropic 直 / Orca Router） ----------
+async function loadProvider(){
+  try{
+    const p=await (await fetch('/api/config/provider')).json();
+    $('pv-name').textContent = p.provider==='orca' ? 'Orca Router' : 'Anthropic 直';
+    $('pv-key').textContent  = p.orca_key_masked;
+    $('pv-models').textContent =
+      `抽出/名寄せ: ${p.models.extract}　探索: ${p.models.explore}`;
+  }catch(e){}
+}
+
+$('pv-save').onclick=async()=>{
+  const v=$('pv-input').value.trim();
+  if(!v){ alert('キーを入力してください'); return; }
+  const r=await fetch('/api/config/provider/orca_key',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:v})});
+  if(r.ok){ $('pv-input').value=''; loadProvider(); } else { alert('設定に失敗しました'); }
+};
+
+$('pv-clear').onclick=async()=>{
+  await fetch('/api/config/provider/orca_key',{method:'DELETE'});
+  loadProvider();
+};
+
+$('pv-use-anthropic').onclick=async()=>{
+  const r=await fetch('/api/config/provider/select?name=anthropic',{method:'POST'});
+  if(!r.ok){ const j=await r.json().catch(()=>({})); alert(j.detail||'切替に失敗しました'); }
+  loadProvider();
+};
+
+$('pv-probe').onclick=async()=>{
+  const b=$('pv-probe'); b.disabled=true; b.textContent='確認中…';
+  try{
+    const j=await (await fetch('/api/config/provider/probe')).json();
+    alert(j.ok ? `疎通OK\n接続先: ${j.provider}\nモデル: ${j.model}`
+               : `疎通NG\n接続先: ${j.provider}\n${j.error}`);
+  }catch(e){ alert('通信エラー'); }
+  finally{ b.disabled=false; b.textContent='疎通確認'; }
+};
+
+// ---------- Phase 8-A: モデル割当（proposal.md 2-1-1 / 2-1-2 / 2-1-3） ----------
+async function loadModels(){
+  try{
+    const j=await (await fetch('/api/config/models')).json();
+    $('md-family').value=j.family;
+    $('md-table').innerHTML='<table>'+j.assignments.map(a=>
+      `<tr><td>${esc(a.label)}</td><td style="opacity:.7">${a.tier}</td><td>${esc(a.model)}</td></tr>`
+    ).join('')+'</table>';
+  }catch(e){}
+}
+$('md-family').onchange=async e=>{
+  const fd=new FormData(); fd.append('name',e.target.value);
+  const r=await fetch('/api/config/models/family',{method:'POST',body:fd});
+  if(!r.ok){ const j=await r.json().catch(()=>({})); alert(j.detail||'切替に失敗しました'); }
+  loadModels();
+};
+$('md-probe').onclick=async()=>{
+  const b=$('md-probe'); b.disabled=true; b.textContent='確認中…';
+  try{
+    const j=await (await fetch('/api/config/models/probe_alt')).json();
+    alert(j.results.map(r=>`${r.ok?'OK ':'NG '} ${r.model}${r.ok?'':' — '+r.error}`).join('\n'));
+  }catch(e){ alert('通信エラー'); }
+  finally{ b.disabled=false; b.textContent='別系統の疎通確認'; }
+};
+
+// ---------- Phase 8-B: LLM 推論（proposal.md 2-1） ----------
+$('btn-ask').onclick=()=>{
+  const p=$('ask');
+  p.style.display = p.style.display==='block' ? 'none' : 'block';
+};
+
+function askRender(j){
+  const out=$('ask-out');
+  if(j.status==='blocked'){
+    out.innerHTML=`<div class="fd hyp">送信しませんでした: ${esc(j.reason)}</div>`;
+    return;
+  }
+  if(j.status==='error'){
+    out.innerHTML=`<div class="fd hyp">実行できませんでした: ${esc(j.reason)}</div>`;
+    return;
+  }
+  if(j.status==='dry_run'){
+    out.innerHTML=`<div class="ans">実行はしていません。証拠に使う記録 ${j.evidence_events} 件、`
+      +`伏字 ${j.mask.masked_count} 箇所、送信 ${j.mask.chars} 文字。</div>`;
+    return;
+  }
+  const fd=(f,hyp)=>`<div class="fd${hyp?' hyp':''}">
+      <div class="ty">${esc(f.type)} ・ 確度 ${esc(f.confidence)}${hyp?' ・ 根拠を引けず（仮説）':''}</div>
+      <div>${esc(f.statement)}</div>
+      <div class="bs">根拠 ${f.basis_event_ids.length} 件${f.dropped_ids&&f.dropped_ids.length?` / 実在しないID ${f.dropped_ids.length} 件を破棄`:''}</div>
+    </div>`;
+  out.innerHTML=`<div class="ans">${esc(j.answer)}</div>`
+    + j.findings.map(f=>fd(f,false)).join('')
+    + j.unverified.map(f=>fd(f,true)).join('');
+}
+
+async function askCall(dry){
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  const q=$('ask-q').value.trim();
+  if(!q){ alert('問いを入力してください。'); return; }
+  const b=dry?$('ask-est'):$('ask-run'); const lab=b.textContent;
+  b.disabled=true; b.textContent='実行中…';
+  $('ask-cost').textContent='';
+  try{
+    const r=await fetch('/api/projecttree/infer',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({thread_id:curThread, question:q,
+                           allow_sensitive:$('ask-allow').checked, dry_run:dry})});
+    const j=await r.json();
+    if(!r.ok){ $('ask-out').innerHTML=`<div class="fd hyp">${esc(j.detail||'失敗しました')}</div>`; return; }
+    $('ask-cost').textContent = j.status==='ok'
+      ? `モデル ${j.model} / 実測 $${j.cost_usd}（見積 $${j.estimate_usd}） / 入力${j.usage.input_tokens} 出力${j.usage.output_tokens} / 伏字${j.mask.masked_count}箇所`
+      : (j.estimate ? `見積 $${j.estimate.usd}（${j.estimate.model}） 上限 $${j.estimate.limit_usd}` : '');
+    askRender(j);
+  }catch(e){ $('ask-out').innerHTML='<div class="fd hyp">通信エラー</div>'; }
+  finally{ b.disabled=false; b.textContent=lab; }
+}
+$('ask-est').onclick=()=>askCall(true);
+$('ask-run').onclick=()=>askCall(false);
+
+// proposal.md 2-2: キーワードで拾えなかった記録だけを LLM が段階分類する
+$('ask-stage').onclick=async()=>{
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  const b=$('ask-stage'), lab=b.textContent; b.disabled=true; b.textContent='確認中…';
+  const out=$('ask-stage-out');
+  try{
+    const fd=new FormData(); fd.append('thread_id',curThread); fd.append('dry_run','true');
+    const est=await (await fetch('/api/projecttree/stages/llm',{method:'POST',body:fd})).json();
+    if(est.status!=='dry_run'){ out.textContent=est.reason||est.detail||'実行できませんでした'; return; }
+    const e2=est.estimate;
+    if(!confirm(`ルールで分類できなかった記録 ${est.targets} 件を LLM が分類します。\n\n`
+      +`モデル: ${e2.model}\n概算コスト: $${e2.usd}（約${e2.jpy}円）\n\n実行しますか。`)){
+      out.textContent='中止しました（API は呼んでいません）'; return;
+    }
+    b.textContent='分類中…';
+    const fd2=new FormData(); fd2.append('thread_id',curThread); fd2.append('dry_run','false');
+    const j=await (await fetch('/api/projecttree/stages/llm',{method:'POST',body:fd2})).json();
+    out.textContent = j.status==='ok'
+      ? `対象${j.targets}件中 ${j.applied}件を分類 / 根拠語が原文に無いなど ${j.rejected.length}件を破棄 / 実測 $${j.cost_usd}`
+      : (j.reason||j.detail||'失敗しました');
+    if(j.status==='ok') loadThread(curThread);
+  }catch(e){ out.textContent='通信エラー'; }
+  finally{ b.disabled=false; b.textContent=lab; }
+};
+
+// ---------- Phase 8-C: 3D進捗管理（proposal.md Part2 2-2） ----------
+$('btn-prg').onclick=()=>{
+  const p=$('prg');
+  const show = p.style.display!=='block';
+  p.style.display = show?'block':'none';
+  if(show){ loadPresets(); loadProgress(); }
+};
+
+function pgLog(msg){ $('pg-log').textContent=msg; }
+
+async function loadPresets(){
+  if($('pg-preset').options.length) return;
+  try{
+    const j=await (await fetch('/api/projecttree/progress/presets')).json();
+    $('pg-preset').innerHTML=j.presets.map(p=>
+      `<option value="${p.key}">${esc(p.type)}（${p.parts}部材: ${esc(p.part_names.join('・'))}）</option>`).join('');
+  }catch(e){}
+}
+
+async function loadProgress(){
+  if(!curThread){ $('pg-parts').innerHTML='<div class="note">案件を選んでください。</div>'; return; }
+  try{
+    const j=await (await fetch('/api/projecttree/progress/parts?thread_id='+encodeURIComponent(curThread))).json();
+    const o=j.overall;
+    $('pg-overall').textContent = o.parts
+      ? `${o.percent}%（完了${o.completed} / 進行中${o.in_progress} / 未着手${o.not_started}・${o.weighting}）`
+      : 'モデル部材がありません';
+    $('pg-bar-in').style.width=(o.percent||0)+'%';
+    $('pg-parts').innerHTML = j.parts.length ? j.parts.map(p=>
+      `<div class="pgrow">
+         <span class="mn">段${p.stage_no}</span>
+         <span class="nm">${esc(p.name)}${p.linked_events?` <span style="opacity:.55">記録${p.linked_events}</span>`:''}</span>
+         <span class="st">${esc(p.status)}</span>
+         <input type="number" min="0" max="100" step="5" value="${p.percent}" data-pk="${esc(p.part_key)}">
+         <span class="mn">${p.progress_source==='manual'?'手入力':'台帳'}</span>
+       </div>`).join('') : '<div class="note">この案件にはモデル部材がありません。「基本構造の追加」から作れます。</div>';
+    $('pg-parts').querySelectorAll('input[data-pk]').forEach(inp=>{
+      inp.onchange=async()=>{
+        const fd=new FormData();
+        fd.append('thread_id',curThread); fd.append('part_key',inp.dataset.pk);
+        fd.append('percent',inp.value); fd.append('note','画面から手入力');
+        await fetch('/api/projecttree/progress/set',{method:'POST',body:fd});
+        loadProgress();
+      };
+    });
+  }catch(e){ pgLog('進捗の取得に失敗しました'); }
+}
+
+$('pg-add').onclick=async()=>{
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  const b=$('pg-add'); b.disabled=true; b.textContent='生成中…';
+  try{
+    const fd=new FormData();
+    fd.append('thread_id',curThread); fd.append('preset',$('pg-preset').value);
+    const r=await fetch('/api/projecttree/progress/structure',{method:'POST',body:fd});
+    const j=await r.json();
+    pgLog(r.ok ? `追加しました（${j.note||''}）` : (j.detail||'失敗しました'));
+    if(r.ok){ loadProgress(); loadThread(curThread); }
+  }catch(e){ pgLog('通信エラー'); }
+  finally{ b.disabled=false; b.textContent='追加（費用 0 円）'; }
+};
+
+$('pg-photo-pick').onclick=()=>$('pg-photo').click();
+$('pg-photo').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(!curThread){ alert('先に案件を選んでください。'); e.target.value=''; return; }
+  $('pg-photo-name').textContent=f.name;
+  // まず見積りだけ出す。API はまだ呼ばない（proposal.md「LLMでかかるトークンとコストを提示」）
+  const fd=new FormData();
+  fd.append('thread_id',curThread); fd.append('confirm','false'); fd.append('file',f);
+  pgLog('見積り中…');
+  try{
+    const j=await (await fetch('/api/projecttree/progress/photo',{method:'POST',body:fd})).json();
+    const e2=j.estimate;
+    const ok=confirm(`写真から3Dモデルを作成します。\n\nモデル: ${e2.model}\n`
+      +`概算トークン: 入力${e2.input_tokens} / 出力${e2.output_tokens}\n`
+      +`概算コスト: $${e2.usd}（約${e2.jpy}円）\n\n実行しますか。`);
+    if(!ok){ pgLog('中止しました（API は呼んでいません）'); e.target.value=''; return; }
+    const fd2=new FormData();
+    fd2.append('thread_id',curThread); fd2.append('confirm','true'); fd2.append('file',f);
+    pgLog('生成中…');
+    const j2=await (await fetch('/api/projecttree/progress/photo',{method:'POST',body:fd2})).json();
+    if(j2.status==='ok'){
+      pgLog(`生成しました: ${j2.parts.map(p=>p.name).join('・')} / 実測 $${j2.cost_usd}（見積 $${j2.estimate_usd}）`);
+      loadProgress(); loadThread(curThread);
+    } else { pgLog(j2.detail||'失敗しました'); }
+  }catch(err){ pgLog('通信エラー'); }
+  finally{ e.target.value=''; }
+};
+
+$('pg-imp-pick').onclick=()=>$('pg-imp').click();
+$('pg-imp').onchange=async e=>{
+  const files=[...e.target.files]; if(!files.length) return;
+  if(!curThread){ alert('先に案件を選んでください。'); e.target.value=''; return; }
+  const fd=new FormData();
+  fd.append('thread_id',curThread);
+  files.forEach(f=>fd.append('files',f));
+  pgLog('取込中…');
+  try{
+    const j=await (await fetch('/api/projecttree/progress/import',{method:'POST',body:fd})).json();
+    const ok=j.results.filter(r=>r.status==='ok').length;
+    const ng=j.results.filter(r=>r.status!=='ok');
+    pgLog(`取込 ${ok} 件${ng.length?` / 拒否 ${ng.length} 件（${ng.map(r=>r.filename+': '+r.reason).join(', ')}）`:''}`);
+  }catch(err){ pgLog('通信エラー'); }
+  finally{ e.target.value=''; }
+};
+
+$('pg-link').onclick=async()=>{
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  const b=$('pg-link'); b.disabled=true; b.textContent='推論中…';
+  try{
+    const fd=new FormData(); fd.append('thread_id',curThread); fd.append('dry_run','true');
+    const est=await (await fetch('/api/projecttree/parts/infer',{method:'POST',body:fd})).json();
+    if(est.status==='skipped'){ $('pg-link-out').textContent=est.reason; return; }
+    if(est.status==='blocked'){ $('pg-link-out').textContent=est.reason; return; }
+    const e2=est.estimate;
+    if(!confirm(`部位と記録を対応づけます。\n\nモデル: ${e2.model}\n概算コスト: $${e2.usd}（約${e2.jpy}円）\n\n実行しますか。`)){
+      $('pg-link-out').textContent='中止しました（API は呼んでいません）'; return;
+    }
+    const fd2=new FormData(); fd2.append('thread_id',curThread); fd2.append('dry_run','false');
+    const j=await (await fetch('/api/projecttree/parts/infer',{method:'POST',body:fd2})).json();
+    $('pg-link-out').textContent = j.status==='ok'
+      ? `対応づけ ${j.applied} 件 / 破棄 ${j.rejected.length} 件 / 実測 $${j.cost_usd}`
+      : (j.reason||j.detail||'失敗しました');
+    loadProgress();
+  }catch(e){ $('pg-link-out').textContent='通信エラー'; }
+  finally{ b.disabled=false; b.textContent='部位と記録をLLMで対応づけ（2-4）'; }
+};
+
+loadModels();
+
+// ---------- Phase 9-④: 時系列パネルの幅をドラッグで変える ----------
+// 既定の 44% は CSS に残したまま、ドラッグしたときだけ上書きする。
+(function(){
+  const tl=$('tl'), grip=$('tl-grip');
+  const MIN=320, saved=localStorage.getItem('pt_tl_width');
+  if(saved) tl.style.width=saved;
+  let drag=false;
+  grip.addEventListener('mousedown',e=>{ drag=true; document.body.style.userSelect='none';
+                                         document.body.style.cursor='col-resize'; e.preventDefault(); });
+  addEventListener('mouseup',()=>{
+    if(!drag) return;
+    drag=false; document.body.style.userSelect=''; document.body.style.cursor='';
+    localStorage.setItem('pt_tl_width', tl.style.width);
+  });
+  addEventListener('mousemove',e=>{
+    if(!drag) return;
+    const w=Math.min(Math.max(innerWidth-e.clientX, MIN), innerWidth-260);
+    tl.style.width=w+'px';
+  });
+  // ダブルクリックで既定に戻す
+  grip.addEventListener('dblclick',()=>{ tl.style.width='44%'; localStorage.removeItem('pt_tl_width'); });
+})();
+
+// ---------- Enhancement02: 案件一覧と入力欄の幅をドラッグで変える ----------
+// #tree（プロジェクト表示欄）と #intake（プロンプト入力欄）は左端に縦並びで、
+// 幅が揃っている必要がある。両方まとめて1本の掴み手で動かす。
+(function(){
+  const tree=$('tree'), box=$('intake'), grip=$('side-grip');
+  const MIN=170, MAX=()=>Math.min(innerWidth-360, 720);
+  function apply(w){
+    tree.style.width=w+'px';
+    box.style.width=w+'px';
+    grip.style.left=w+'px';
+    // 3Dビューは幅が変わると描画がずれるので、既存の resize をそのまま呼ぶ
+    if(typeof resize==='function') resize();
+  }
+  const saved=parseInt(localStorage.getItem('pt_side_width')||'',10);
+  apply(saved && saved>=MIN ? saved : 230);
+
+  let drag=false;
+  grip.addEventListener('mousedown',e=>{
+    drag=true;
+    document.body.style.userSelect='none';
+    document.body.style.cursor='col-resize';
+    e.preventDefault();
+  });
+  addEventListener('mousemove',e=>{
+    if(!drag) return;
+    apply(Math.min(Math.max(e.clientX, MIN), MAX()));
+  });
+  addEventListener('mouseup',()=>{
+    if(!drag) return;
+    drag=false;
+    document.body.style.userSelect='';
+    document.body.style.cursor='';
+    localStorage.setItem('pt_side_width', parseInt(tree.style.width,10));
+  });
+  grip.addEventListener('dblclick',()=>{ apply(230); localStorage.removeItem('pt_side_width'); });
+})();
+
+// ---------- Phase 9-⑤: 1次情報の入力欄の高さをドラッグで変える ----------
+(function(){
+  const box=$('intake'), grip=$('ik-grip'), tree=$('tree');
+  const MIN=120, MAX=()=>Math.min(innerHeight-200, 620);
+  function apply(h){
+    box.style.height=h+'px';
+    tree.style.maxHeight=`calc(100vh - 48px - ${h}px)`;
+    box.classList.toggle('tall', h>240);
+  }
+  const saved=parseInt(localStorage.getItem('pt_ik_height')||'',10);
+  if(saved) apply(saved);
+  let drag=false;
+  grip.addEventListener('mousedown',e=>{ drag=true; document.body.style.userSelect='none';
+                                         document.body.style.cursor='row-resize'; e.preventDefault(); });
+  addEventListener('mouseup',()=>{
+    if(!drag) return;
+    drag=false; document.body.style.userSelect=''; document.body.style.cursor='';
+    localStorage.setItem('pt_ik_height', parseInt(box.style.height,10));
+  });
+  addEventListener('mousemove',e=>{
+    if(!drag) return;
+    apply(Math.min(Math.max(innerHeight-e.clientY, MIN), MAX()));
+  });
+  grip.addEventListener('dblclick',()=>{ apply(186); localStorage.removeItem('pt_ik_height'); });
+})();
+
+// ---------- Phase 9-①: 画像をLLMに読ませて台帳へ入れる ----------
+$('ik-pick-img').onclick=()=>$('ik-img').click();
+
+$('ik-img').onchange=async e=>{
+  const files=[...e.target.files];
+  if(!files.length) return;
+  const btn=$('ik-pick-img'), lab=btn.textContent;
+  btn.disabled=true; btn.textContent='見積り中…';
+  try{
+    // まず見積りだけ（API は呼ばれない）
+    const fd=new FormData();
+    fd.append('confirm','false');
+    if(curThread) fd.append('thread_id',curThread);
+    files.forEach(f=>fd.append('files',f));
+    const j=await (await fetch('/api/projecttree/intake/image_llm',{method:'POST',body:fd})).json();
+    const rej=(j.results||[]).filter(r=>r.status==='rejected');
+    rej.forEach(r=>ikLog(`拒否: ${r.filename} — ${r.reason}`,'ng'));
+    const ok=(j.results||[]).filter(r=>r.status==='estimate');
+    if(!ok.length){ return; }
+    const e1=ok[0].estimate;
+    if(!confirm(`画像 ${ok.length} 枚をLLMに読ませ、記述文を台帳へ入れます。\n\n`
+      +`モデル: ${e1.model}\n概算コスト: 合計 $${j.estimate_usd}（約${Math.round(j.estimate_usd*150*10)/10}円）\n\n実行しますか。`)){
+      ikLog('中止しました（API は呼んでいません）','sk'); return;
+    }
+    btn.textContent='解析中…';
+    const fd2=new FormData();
+    fd2.append('confirm','true');
+    if(curThread) fd2.append('thread_id',curThread);
+    files.forEach(f=>fd2.append('files',f));
+    const j2=await (await fetch('/api/projecttree/intake/image_llm',{method:'POST',body:fd2})).json();
+    (j2.results||[]).forEach(r=>{
+      if(r.status==='added'){
+        ikLog(`画像を読取: ${r.filename} → 「${r.title}」段階${r.stage_no} / 所見${r.observations}件`,'ok');
+        if(r.safety_concerns && r.safety_concerns.length)
+          ikLog(`  安全上の懸念: ${r.safety_concerns.join(' / ')}`,'sk');
+      } else if(r.status==='skipped') ikLog(`重複: ${r.filename}`,'sk');
+      else ikLog(`失敗: ${r.filename} — ${r.reason||''}`,'ng');
+    });
+    ikLog(`実測 $${j2.cost_usd}（見積 $${j.estimate_usd}）`,'sk');
+    ikStatus();
+    if(curThread) loadThread(curThread);
+  }catch(err){ ikLog('通信エラー','ng'); }
+  finally{ btn.disabled=false; btn.textContent=lab; e.target.value=''; }
+};
+
+// ---------- Phase 9-⑥: 案件の作成・改名・統合・削除 ----------
+$('btn-prj').onclick=()=>{
+  const p=$('prj');
+  const show=p.style.display!=='block';
+  p.style.display=show?'block':'none';
+  if(show){ loadProjects(); loadDupCount(); loadVisibility(); }
+};
+
+function pjLog(msg,cls){
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent=msg;
+  $('prj-log').prepend(d);
+}
+
+function checkedProjects(){
+  return [...$('prj-list').querySelectorAll('input[type=checkbox]:checked')].map(c=>c.dataset.tid);
+}
+
+async function loadProjects(){
+  try{
+    const j=await (await fetch('/api/projecttree/projects')).json();
+    const cur=j.projects.find(p=>p.thread_id===curThread);
+    $('pj-cur').textContent = cur ? `${cur.name}（記録${cur.events} / 段階${cur.stages} / 部材${cur.parts}）`
+                                  : '未選択（左の一覧から選んでください）';
+    if(cur){ $('pj-rename').value=cur.name; $('pj-alias').value=(cur.aliases||[]).join(', '); }
+    $('prj-list').innerHTML=j.projects.map(p=>
+      `<div class="pjrow">
+         <input type="checkbox" data-tid="${p.thread_id}"${p.thread_id===curThread?' disabled title="選択中の案件"':''}>
+         <span class="nm"${p.thread_id===curThread?' style="font-weight:700"':''}>${esc(p.name)}</span>
+         <span class="cnt">記録${p.events} 段階${p.stages} 部材${p.parts}</span>
+       </div>`).join('');
+  }catch(e){ pjLog('一覧の取得に失敗しました','ng'); }
+}
+
+$('pj-create').onclick=async()=>{
+  const name=$('pj-new').value.trim();
+  if(!name){ pjLog('案件名を入力してください','ng'); return; }
+  const b=$('pj-create'); b.disabled=true;
+  try{
+    const r=await fetch('/api/projecttree/projects',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const j=await r.json();
+    if(!r.ok){ pjLog(j.detail||'作成に失敗しました','ng'); }
+    else if(j.status==='exists'){ pjLog(`同名の案件が既にあります: ${j.name}`,'ng'); }
+    else { pjLog(`作成: ${j.name}`,'ok'); $('pj-new').value=''; loadTree(); loadProjects(); }
+  }catch(e){ pjLog('通信エラー','ng'); }
+  finally{ b.disabled=false; }
+};
+
+async function pjPatch(body,label){
+  if(!curThread){ pjLog('先に案件を選んでください','ng'); return; }
+  try{
+    const r=await fetch('/api/projecttree/projects/'+encodeURIComponent(curThread),
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok) pjLog(j.detail||label+'に失敗しました','ng');
+    else { pjLog(`${label}: ${j.name}`,'ok'); loadTree(); loadProjects(); }
+  }catch(e){ pjLog('通信エラー','ng'); }
+}
+$('pj-do-rename').onclick=()=>pjPatch({name:$('pj-rename').value.trim()},'名前を変更');
+$('pj-do-alias').onclick=()=>pjPatch(
+  {aliases:$('pj-alias').value.split(',').map(s=>s.trim()).filter(Boolean)},'別名を保存');
+
+// デモ用の表示絞り込み（データは消さず、一覧に出す案件だけを選ぶ）
+async function loadVisibility(){
+  try{
+    const j=await (await fetch('/api/projecttree/visibility')).json();
+    document.getElementById('pj-demo-state').textContent =
+      j.filtered ? ('表示 '+j.shown+' / 非表示 '+j.hidden) : ('全'+j.total+'件を表示中');
+  }catch(e){}
+}
+
+async function applyVisibility(body, label){
+  try{
+    const r=await fetch('/api/projecttree/visibility/keep_only',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok){ pjLog(j.detail||'切替に失敗しました','ng'); return; }
+    pjLog(label+': 表示'+j.shown+'件 / 非表示'+j.hidden+'件','ok');
+    if(j.kept_names&&j.kept_names.length) pjLog('  表示: '+j.kept_names.join(' / '),'sk');
+    loadTree(); loadProjects(); loadVisibility();
+  }catch(e){ pjLog('通信エラー','ng'); }
+}
+
+document.getElementById('pj-demo-apply').onclick=()=>{
+  const kw=document.getElementById('pj-demo-kw').value.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!kw.length){ pjLog('キーワードを入力してください','ng'); return; }
+  applyVisibility({keywords:kw}, 'キーワードで絞り込み');
+};
+
+document.getElementById('pj-demo-checked').onclick=()=>{
+  const ids=checkedProjects();
+  const cur=curThread?[curThread]:[];
+  const keep=[...new Set([...ids,...cur])];
+  if(!keep.length){ pjLog('表示したい案件をチェックしてください','ng'); return; }
+  applyVisibility({thread_ids:keep}, 'チェックした案件だけ表示');
+};
+
+document.getElementById('pj-demo-all').onclick=async()=>{
+  try{
+    const j=await (await fetch('/api/projecttree/visibility/show_all',{method:'POST'})).json();
+    pjLog('全案件を表示に戻しました（'+j.restored+'件）','ok');
+    loadTree(); loadProjects(); loadVisibility();
+  }catch(e){ pjLog('通信エラー','ng'); }
+};
+
+// 同名で割れた案件をまとめる（threader が実行のたびに新規作成するため）
+async function loadDupCount(){
+  try{
+    const j=await (await fetch('/api/projecttree/projects/duplicates')).json();
+    $('pj-dup-count').textContent = j.groups ? `${j.groups} グループが割れています` : '割れている案件はありません';
+    $('pj-dedup').disabled = !j.groups;
+  }catch(e){}
+}
+
+$('pj-dedup').onclick=async()=>{
+  const j0=await (await fetch('/api/projecttree/projects/duplicates')).json();
+  if(!j0.groups){ pjLog('割れている案件はありません','sk'); return; }
+  const lines=j0.plan.slice(0,10)
+    .map(p=>'・'+p.name+': '+p.merge.length+'件を統合')
+    .join('\n');
+  const more=j0.plan.length>10 ? '\n…ほか'+(j0.plan.length-10)+'件' : '';
+  if(!confirm('同名で割れた '+j0.groups+' グループをまとめます。\n\n'
+    + lines + more
+    + '\n\nモデルや段階を持つ案件を残します。元に戻せません。実行しますか。')) return;
+  const b=$('pj-dedup'); b.disabled=true; b.textContent='統合中…';
+  try{
+    const j=await (await fetch('/api/projecttree/projects/dedup',{method:'POST'})).json();
+    pjLog(`自動統合: ${j.merged_threads} 件の重複をまとめました`,'ok');
+    loadTree(); loadProjects(); loadDupCount();
+  }catch(e){ pjLog('通信エラー','ng'); }
+  finally{ b.disabled=false; b.textContent='同名で割れた案件を自動でまとめる'; }
+};
+
+$('pj-merge').onclick=async()=>{
+  if(!curThread){ pjLog('統合先として案件を選んでください','ng'); return; }
+  const ids=checkedProjects();
+  if(!ids.length){ pjLog('統合する案件をチェックしてください','ng'); return; }
+  if(!confirm(`チェックした ${ids.length} 件を、選択中の案件へ統合します。\n`
+    +`記録は失われませんが、段階は作り直しが必要になります。\n\n実行しますか。`)) return;
+  const b=$('pj-merge'); b.disabled=true;
+  try{
+    const r=await fetch('/api/projecttree/projects/merge',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({into_id:curThread,from_ids:ids})});
+    const j=await r.json();
+    if(!r.ok) pjLog(j.detail||'統合に失敗しました','ng');
+    else {
+      pjLog(`統合: ${j.merged_count}件 → ${j.into_name}（記録${j.moved.events}件を移送）`,'ok');
+      pjLog(j.note,'');
+      loadTree(); loadProjects();
+    }
+  }catch(e){ pjLog('通信エラー','ng'); }
+  finally{ b.disabled=false; }
+};
+
+$('pj-delete').onclick=async()=>{
+  const ids=checkedProjects();
+  if(!ids.length){ pjLog('削除する案件をチェックしてください','ng'); return; }
+  // 何がどれだけ消えるかを先に見せる
+  const previews=[];
+  for(const tid of ids){
+    try{
+      previews.push(await (await fetch(`/api/projecttree/projects/${encodeURIComponent(tid)}/delete_preview`)).json());
+    }catch(e){}
+  }
+  const withData=previews.filter(p=>!p.empty);
+  const lines=previews.map(p=>`・${p.name}: ${p.empty?'空':`中身 ${p.total} 件`}`).join('\n');
+  if(!confirm(`次の ${previews.length} 件を削除します。\n\n${lines}\n\n`
+    +(withData.length?`中身のある案件が ${withData.length} 件あります。記録も一緒に消えます。\n\n`:'')
+    +`元に戻せません。実行しますか。`)) return;
+
+  const b=$('pj-delete'); b.disabled=true;
+  try{
+    for(const p of previews){
+      const q=new URLSearchParams({cascade: p.empty?'false':'true', keep_files:'true'});
+      const r=await fetch(`/api/projecttree/projects/${encodeURIComponent(p.thread_id)}?`+q,{method:'DELETE'});
+      const j=await r.json();
+      if(!r.ok) pjLog(`${p.name}: ${j.detail||'削除に失敗しました'}`,'ng');
+      else pjLog(`削除: ${j.name}`,'ok');
+      if(p.thread_id===curThread) curThread=null;
+    }
+    loadTree(); loadProjects();
+  }catch(e){ pjLog('通信エラー','ng'); }
+  finally{ b.disabled=false; }
+};
+
+// ---------- Phase 9-⑦: Blender 連携 ----------
+function blLog(msg){ $('bl-log').textContent=msg; }
+
+$('bl-check').onclick=async()=>{
+  const b=$('bl-check'); b.disabled=true; b.textContent='確認中…';
+  try{
+    const j=await (await fetch('/api/projecttree/blender/status')).json();
+    $('bl-state').textContent = j.connected
+      ? `接続OK（port ${j.port} / シーン内 ${((j.scene||{}).object_count)||0} オブジェクト）` : '未接続';
+    blLog(j.connected ? '' : j.reason||'接続できません');
+  }catch(e){ blLog('通信エラー'); }
+  finally{ b.disabled=false; b.textContent='接続確認'; }
+};
+
+$('bl-build').onclick=async()=>{
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  const b=$('bl-build'), lab=b.textContent; b.disabled=true; b.textContent='組立中…';
+  try{
+    const fd=new FormData(); fd.append('thread_id',curThread);
+    const j=await (await fetch('/api/projecttree/blender/build',{method:'POST',body:fd})).json();
+    blLog(j.status==='ok' ? `Blender に ${j.parts} 部材を組み立てました（原価 $0）`
+                          : (j.reason||'失敗しました'));
+  }catch(e){ blLog('通信エラー'); }
+  finally{ b.disabled=false; b.textContent=lab; }
+};
+
+$('bl-sync').onclick=async()=>{
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  const v=+$('stage-range').value;
+  const fd=new FormData(); fd.append('thread_id',curThread);
+  if(v<6) fd.append('upto_stage',v);
+  try{
+    const j=await (await fetch('/api/projecttree/blender/show',{method:'POST',body:fd})).json();
+    blLog(j.status==='ok' ? `表示段階を同期しました（${v>=6?'完成形':'段階'+v+'まで'}）`
+                          : (j.reason||'失敗しました'));
+  }catch(e){ blLog('通信エラー'); }
+};
+
+$('bl-export').onclick=async()=>{
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  const b=$('bl-export'), lab=b.textContent; b.disabled=true; b.textContent='書出中…';
+  try{
+    const fd=new FormData(); fd.append('thread_id',curThread);
+    const j=await (await fetch('/api/projecttree/blender/export',{method:'POST',body:fd})).json();
+    if(j.status==='ok'){
+      blLog(`GLB を受け取りました（${(j.bytes/1024).toFixed(1)} KB）。台帳の資産に登録済みです。`);
+      // 画面の再読込はここでは失敗させない。失敗しても書き出しは済んでいる。
+      try{ await loadThread(curThread); }catch(e2){ }
+    } else blLog(j.reason||'失敗しました');
+  }catch(e){ blLog('通信エラー'); }
+  finally{ b.disabled=false; b.textContent=lab; }
+};
+
+// ---------- Phase 11-1-2: 「出力」ボタン（一括実行） ----------
+$('ik-run').onclick=async()=>{
+  const btn=$('ik-run'), lab=btn.textContent;
+  const prompt=$('ik-prompt').value.trim();
+  btn.disabled=true; btn.textContent='見積り中…';
+  try{
+    // 入力欄に文章があれば、先に台帳へ入れてから解析する
+    if(prompt){
+      const fd=new FormData(); fd.append('prompt',prompt);
+      if(curThread) fd.append('thread_id',curThread);
+      const r0=await fetch('/api/projecttree/intake/prompt',{method:'POST',body:fd});
+      const j0=await r0.json();
+      if(r0.ok && j0.status!=='skipped'){ ikLog(`取込: ${j0.title}`,'ok'); $('ik-prompt').value=''; }
+    }
+    const body={thread_id:curThread||null};
+    if(!curThread) body.project_name=(prompt.split('\n')[0]||'新規案件').slice(0,60);
+    const est=await (await fetch('/api/projecttree/autorun/estimate',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+    const lines=(est.steps||[]).map(s=>`  ${s.label}: $${s.usd}${s.note?'（'+s.note+'）':''}`).join('\n');
+    if(!confirm(`次の工程をまとめて実行します。\n\n${lines}\n\n`
+      +`概算合計: $${est.total_usd??0}（約${est.total_jpy??0}円）\n\n実行しますか。`)){
+      ikLog('中止しました（API は呼んでいません）','sk'); return;
+    }
+    btn.textContent='実行中…';
+    ikLog('出力を開始しました。数十秒かかります…','sk');
+    const j=await (await fetch('/api/projecttree/autorun',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+    if(j.status==='error'){ ikLog(j.reason||'失敗しました','ng'); return; }
+
+    (j.steps||[]).forEach(s=>{
+      const cls = s.status==='ok'?'ok' : (s.status==='error'?'ng':'sk');
+      let d='';
+      if(s.step==='extract') d=`資料${s.documents??'-'}件→記録+${s.events_added??0}`;
+      else if(s.step==='thread') d=s.note||s.reason||`割当${s.assigned??0}件`;
+      else if(s.step==='stages') d=`段階${s.stages??'-'}`;
+      else if(s.step==='progress') d=`進捗${s.percent??'-'}%`;
+      else if(s.step==='illust') d=s.created_stages?`段階${s.created_stages.join('・')}`:(s.reason||'');
+      else if(s.step==='infer') d=s.findings?`根拠あり${s.findings.length}件`:(s.reason||'');
+      else d=s.reason||'';
+      ikLog(`${s.label}: ${d}${s.cost_usd?` ($${s.cost_usd})`:''}`,cls);
+    });
+    ikLog(`出力 完了 — 実測 $${j.total_cost_usd}（約${j.total_cost_jpy}円）`,'ok');
+
+    // 推論結果は押したあと自動で開く（Enhancement02.md 1-2）。
+    // 画面の再読込より先に出す。再読込で転んでも結果は見えるようにしておく。
+    const inf=(j.steps||[]).find(s=>s.step==='infer');
+    if(inf && inf.status==='ok'){
+      $('ask').style.display='block';
+      $('ask-cost').textContent=`モデル ${inf.model} / 実測 $${inf.cost_usd}`;
+      askRender({...inf, findings:inf.findings||[], unverified:inf.unverified||[]});
+    }
+
+    curThread=j.thread_id;
+    try{
+      await loadTree();
+      await loadThread(curThread);
+      loadProgressBadge();
+    }catch(e2){ ikLog('画面の再読込に失敗しました（結果は保存済みです）','sk'); }
+  }catch(e){ ikLog('通信エラー','ng'); }
+  finally{ btn.disabled=false; btn.textContent=lab; ikStatus(); }
+};
+
+// ---------- Phase 11-1-1: ホイールで資料用画像の表示倍率を変える ----------
+var applyCardScale = () => {};   // 下の IIFE が実体を差し込む
+(function(){
+  const top=$('top');
+  let scale=parseFloat(localStorage.getItem('pt_card_scale')||'1');
+  const BASE=190;
+  function apply(){
+    document.querySelectorAll('.card').forEach(c=>{
+      c.style.minWidth=c.style.maxWidth=Math.round(BASE*scale)+'px';
+    });
+  }
+  applyCardScale=apply;
+  top.addEventListener('wheel',e=>{
+    // Enhancement02.md 1-1「ホイールで大きさを調整」。素のホイールを拡大縮小に使う。
+    // 横スクロールは Shift+ホイール（ブラウザ共通の慣例）に寄せる。
+    if(e.shiftKey){
+      e.preventDefault();
+      top.scrollLeft += e.deltaY;
+      return;
+    }
+    e.preventDefault();
+    scale=Math.min(3, Math.max(0.6, scale + (e.deltaY<0?0.1:-0.1)));
+    localStorage.setItem('pt_card_scale',scale.toFixed(2));
+    apply();
+  },{passive:false});
+  top.addEventListener('dblclick',e=>{
+    if(e.target.closest('.card')) return;
+    scale=1; localStorage.removeItem('pt_card_scale'); apply();
+  });
+})();
+
+// ---------- Phase 11-1-4: 進捗率バッジ（位置・大きさをマウスで調整） ----------
+(function(){
+  const b=$('pgbadge');
+  let pos=JSON.parse(localStorage.getItem('pt_badge')||'null')||{x:12,y:12,s:1};
+  function apply(){
+    b.style.left=pos.x+'px'; b.style.top=pos.y+'px';
+    b.style.transform=`scale(${pos.s})`;
+  }
+  apply();
+  let drag=false, ox=0, oy=0;
+  b.addEventListener('mousedown',e=>{
+    drag=true; ox=e.clientX-pos.x; oy=e.clientY-pos.y;
+    document.body.style.userSelect='none'; e.preventDefault(); e.stopPropagation();
+  });
+  addEventListener('mousemove',e=>{
+    if(!drag) return;
+    const r=$('viewport').getBoundingClientRect();
+    pos.x=Math.max(0,Math.min(e.clientX-ox, r.width-80));
+    pos.y=Math.max(0,Math.min(e.clientY-oy, r.height-60));
+    apply();
+  });
+  addEventListener('mouseup',()=>{
+    if(!drag) return;
+    drag=false; document.body.style.userSelect='';
+    localStorage.setItem('pt_badge',JSON.stringify(pos));
+  });
+  b.addEventListener('wheel',e=>{
+    e.preventDefault(); e.stopPropagation();
+    pos.s=Math.min(2.6, Math.max(0.6, pos.s + (e.deltaY<0?0.1:-0.1)));
+    apply(); localStorage.setItem('pt_badge',JSON.stringify(pos));
+  },{passive:false});
+  b.addEventListener('dblclick',e=>{
+    e.stopPropagation();
+    pos={x:12,y:12,s:1}; apply(); localStorage.removeItem('pt_badge');
+  });
+})();
+
+async function loadProgressBadge(){
+  const b=$('pgbadge');
+  if(!curThread){
+    b.querySelector('.pb-val').innerHTML='--<span class="pb-unit">%</span>';
+    b.querySelector('.pb-in').style.width='0';
+    b.querySelector('.pb-sub').textContent='案件を選んでください';
+    return;
+  }
+  try{
+    const o=await (await fetch('/api/projecttree/progress/overall?thread_id='
+      +encodeURIComponent(curThread))).json();
+    b.querySelector('.pb-val').innerHTML=`${o.percent??0}<span class="pb-unit">%</span>`;
+    b.querySelector('.pb-in').style.width=(o.percent||0)+'%';
+    b.querySelector('.pb-sub').textContent = o.parts
+      ? `完了${o.completed} / 進行中${o.in_progress} / 未着手${o.not_started}`
+      : 'モデル部材がありません';
+  }catch(e){}
+}
+
+// ---------- Phase 11-1-3: フォルダから案件を作る ----------
+$('pj-folder').onclick=()=>$('pj-folder-input').click();
+
+$('pj-folder-input').onchange=async e=>{
+  const all=[...e.target.files];
+  if(!all.length) return;
+  const btn=$('pj-folder'), lab=btn.textContent;
+  const top=(all[0].webkitRelativePath||'').split('/')[0]||'（不明）';
+  if(!confirm(`フォルダ「${top}」から案件を作ります。\n`
+    +`対象ファイル ${all.length} 件。\n\nLLM は使わないので原価は 0 円です。実行しますか。`)){
+    e.target.value=''; return;
+  }
+  btn.disabled=true;
+  const log=$('pj-folder-log');
+  try{
+    const BATCH=20;
+    let tid=null, agg={doc:0,'2d':0,'3d':0,skipped:0,rejected:0}, name=top;
+    for(let i=0;i<all.length;i+=BATCH){
+      const chunk=all.slice(i,i+BATCH);
+      btn.textContent=`${i+chunk.length}/${all.length}`;
+      const fd=new FormData();
+      chunk.forEach(f=>{
+        fd.append('files',f);
+        fd.append('paths', f.webkitRelativePath || f.name);
+      });
+      if(tid){ fd.append('thread_id',tid); fd.append('create_project','false'); }
+      else   { fd.append('create_project','true'); }
+      const r=await fetch('/api/projecttree/folder/sync',{method:'POST',body:fd});
+      const j=await r.json();
+      if(!r.ok){ log.textContent=j.detail||'取込に失敗しました'; return; }
+      tid=tid||j.thread_id; name=j.project_name||name;
+      Object.keys(agg).forEach(k=>agg[k]+=(j.counts[k]||0));
+      (j.results||[]).filter(x=>x.status==='rejected')
+        .forEach(x=>pjLog(`拒否: ${x.path} — ${x.reason}`,'ng'));
+    }
+    log.textContent=`案件「${name}」を作成 — 資料${agg.doc} / 2D${agg['2d']} / 3D${agg['3d']}`
+      +` / 重複${agg.skipped} / 拒否${agg.rejected}（原価 $0）`;
+    pjLog(`フォルダ取込 完了: ${name}`,'ok');
+    curThread=tid;
+    await loadTree();
+    await loadThread(tid);
+    loadProjects(); ikStatus(); loadProgressBadge();
+  }catch(err){ log.textContent='通信エラー'; }
+  finally{ btn.disabled=false; btn.textContent=lab; e.target.value=''; }
+};
+
+(async function(){
+  try{
+    const j=await (await fetch('/api/projecttree/folder/spec')).json();
+    $('pj-folder-spec').textContent =
+      'フォルダ名がそのまま案件名になります。サブフォルダで振り分け: '
+      + j.spec.map(s=>s.folder).join(' / ') + '（原価 0）';
+  }catch(e){}
+})();
+
+// ---------- Phase 11-1-1: イメージ図の編集 ----------
+let illStage=null, illEdits={objects:{},notes:[]};
+
+async function openIllust(stageNo){
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  illStage=stageNo;
+  illEdits={objects:{},notes:[]};
+  $('ill').style.display='block';
+  $('ill-stage').textContent=`段階${stageNo}`;
+  $('ill-log').textContent='';
+  $('ill-cost').textContent='';
+  await illReload();
+}
+
+async function illReload(){
+  const q=`thread_id=${encodeURIComponent(curThread)}&stage_no=${illStage}`;
+  try{
+    const r=await fetch(`/api/projecttree/illust/svg?${q}`);
+    if(r.ok){ $('ill-view').innerHTML=await r.text(); }
+    else { $('ill-view').innerHTML='<div style="padding:26px;color:#666;font-size:12px">'
+      +'この段階のイメージ図はまだありません。「作り直す」で作成できます。</div>'; }
+    const o=await (await fetch(`/api/projecttree/illust/objects?${q}`)).json();
+    $('ill-obj').innerHTML=(o.objects||[]).map(x=>
+      `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('')
+      || '<option value="">（オブジェクトなし）</option>';
+    illSyncControls();
+  }catch(e){ $('ill-log').textContent='読み込みに失敗しました'; }
+}
+
+function illSyncControls(){
+  const id=$('ill-obj').value;
+  const e=illEdits.objects[id]||{};
+  $('ill-dx').value=e.dx||0; $('ill-dx-v').textContent=e.dx||0;
+  $('ill-dy').value=e.dy||0; $('ill-dy-v').textContent=e.dy||0;
+  const sc=Math.round((e.scale||1)*100);
+  $('ill-sc').value=sc; $('ill-sc-v').textContent=sc+'%';
+  $('ill-hide').checked=!!e.hidden;
+}
+
+function illApplyLocal(){
+  const id=$('ill-obj').value;
+  if(!id) return;
+  const dx=+$('ill-dx').value, dy=+$('ill-dy').value, sc=+$('ill-sc').value/100;
+  const hidden=$('ill-hide').checked;
+  $('ill-dx-v').textContent=dx; $('ill-dy-v').textContent=dy;
+  $('ill-sc-v').textContent=Math.round(sc*100)+'%';
+  illEdits.objects[id]={dx,dy,scale:sc,hidden};
+  // 画面上でも即座に反映する（保存前に見た目を確かめられるように）
+  const g=$('ill-view').querySelector(`#${CSS.escape(id)}`);
+  if(g){
+    if(hidden){ g.style.display='none'; }
+    else { g.style.display=''; g.setAttribute('transform',
+      `translate(${dx},${dy}) scale(${sc})`); }
+  }
+}
+['ill-dx','ill-dy','ill-sc'].forEach(i=>$(i).oninput=illApplyLocal);
+$('ill-hide').onchange=illApplyLocal;
+$('ill-obj').onchange=illSyncControls;
+
+$('ill-note-add').onclick=()=>{
+  const t=$('ill-note').value.trim();
+  if(!t) return;
+  illEdits.notes.push({x:40,y:40+illEdits.notes.length*32,text:t,color:'#c62828'});
+  $('ill-note').value='';
+  illRenderNotes();
+};
+function illRenderNotes(){
+  $('ill-notes').innerHTML=illEdits.notes.map((n,i)=>
+    `<span data-i="${i}" title="クリックで削除">${esc(n.text)} ×</span>`).join('');
+  $('ill-notes').querySelectorAll('span').forEach(s=>{
+    s.onclick=()=>{ illEdits.notes.splice(+s.dataset.i,1); illRenderNotes(); };
+  });
+}
+
+$('ill-save').onclick=async()=>{
+  const b=$('ill-save'); b.disabled=true;
+  try{
+    const r=await fetch('/api/projecttree/illust/edits',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({thread_id:curThread,stage_no:illStage,edits:illEdits})});
+    const j=await r.json();
+    $('ill-log').textContent = j.status==='ok'
+      ? `保存しました（オブジェクト${j.objects} / 注意書き${j.notes}）。資料にも反映されます。`
+      : (j.reason||'保存に失敗しました');
+    if(j.status==='ok'){ await illReload(); renderCards(); }
+  }catch(e){ $('ill-log').textContent='通信エラー'; }
+  finally{ b.disabled=false; }
+};
+
+$('ill-reset').onclick=async()=>{
+  if(!confirm('編集を破棄して、生成したときの状態に戻します。よろしいですか。')) return;
+  const q=`thread_id=${encodeURIComponent(curThread)}&stage_no=${illStage}`;
+  try{
+    const j=await (await fetch(`/api/projecttree/illust/edits?${q}`,{method:'DELETE'})).json();
+    illEdits={objects:{},notes:[]};
+    illRenderNotes();
+    $('ill-log').textContent=j.note||j.reason||'';
+    await illReload(); renderCards();
+  }catch(e){ $('ill-log').textContent='通信エラー'; }
+};
+
+async function illGenerate(files){
+  const b=$('ill-gen'), lab=b.textContent;
+  b.disabled=true; b.textContent='見積り中…';
+  try{
+    const mk=(confirm)=>{
+      const fd=new FormData();
+      fd.append('thread_id',curThread);
+      fd.append('stage_no',illStage);
+      fd.append('confirm',confirm?'true':'false');
+      (files||[]).forEach(f=>fd.append('photos',f));
+      return fd;
+    };
+    const est=await (await fetch('/api/projecttree/illust/generate',
+      {method:'POST',body:mk(false)})).json();
+    if(est.status!=='estimate'){ $('ill-log').textContent=est.reason||'作成できません'; return; }
+    const e=est.estimate;
+    if(!confirm(`段階${illStage}のイメージ図を作ります。\n\nモデル: ${e.model}\n`
+      +`概算コスト: $${e.usd}（約${e.jpy}円）${files&&files.length?`\n参考写真: ${files.length}枚`:''}`
+      +`\n\n実行しますか。`)){
+      $('ill-log').textContent='中止しました（API は呼んでいません）'; return;
+    }
+    b.textContent='作成中…';
+    const j=await (await fetch('/api/projecttree/illust/generate',
+      {method:'POST',body:mk(true)})).json();
+    if(j.status==='ok'){
+      $('ill-cost').textContent=`${j.model} / 実測 $${j.cost_usd}（見積 $${j.estimate_usd}） / 編集できる要素 ${j.objects}個`;
+      illEdits={objects:{},notes:[]}; illRenderNotes();
+      await illReload(); renderCards();
+    } else { $('ill-log').textContent=j.reason||'作成に失敗しました'; }
+  }catch(e){ $('ill-log').textContent='通信エラー'; }
+  finally{ b.disabled=false; b.textContent=lab; }
+}
+$('ill-gen').onclick=()=>illGenerate([]);
+$('ill-photo-pick').onclick=()=>$('ill-photo').click();
+$('ill-photo').onchange=e=>{ const f=[...e.target.files]; e.target.value=''; if(f.length) illGenerate(f); };
+
+resize();
+loadTree();
+ikStatus();
+loadProvider();
+loadModels();
+loadProgressBadge();
+</script>
+</body>
+</html>
