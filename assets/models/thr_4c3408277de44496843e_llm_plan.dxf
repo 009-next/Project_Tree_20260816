@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461266.751087963
+2461268.897314815
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461266.751087963
+2461268.897314815
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-3C
+42
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{6548D5C0-F5D7-414F-90EC-F3D7CA277A42}
+{79298EB8-87E0-49FA-84C4-85D4642F9935}
   9
 $VERSIONGUID
   2
-{3CA6EB88-3EAE-4C02-AFB4-DD9A59F27B38}
+{61C95680-4A9E-4D50-8596-0BE2388757F0}
   9
 $EXTNAMES
 290
@@ -1701,7 +1701,7 @@ ACAD
   0
 APPID
   5
-39
+3F
 330
 3
 100
@@ -1715,7 +1715,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-3A
+40
 330
 3
 100
@@ -2031,7 +2031,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-pier_1
+pier1
 100
 AcDbPolyline
  90
@@ -2039,21 +2039,21 @@ AcDbPolyline
  70
 1
  10
--13.0
+-13.5
  20
--1.0
+-1.5
  10
--11.0
+-10.5
  20
--1.0
+-1.5
  10
--11.0
+-10.5
  20
-1.0
+1.5
  10
--13.0
+-13.5
  20
-1.0
+1.5
   0
 TEXT
   5
@@ -2063,11 +2063,11 @@ TEXT
 100
 AcDbEntity
   8
-pier_1
+pier1
 100
 AcDbText
  10
--13.0
+-13.5
  20
 0.0
  30
@@ -2075,9 +2075,9 @@ AcDbText
  40
 0.6
   1
-橋脚P1
+橋脚
  11
--13.0
+-13.5
  21
 0.0
  31
@@ -2093,7 +2093,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-pier_2
+pier2
 100
 AcDbPolyline
  90
@@ -2101,21 +2101,21 @@ AcDbPolyline
  70
 1
  10
-11.0
+10.5
  20
--1.0
+-1.5
  10
-13.0
+13.5
  20
--1.0
+-1.5
  10
-13.0
+13.5
  20
-1.0
+1.5
  10
-11.0
+10.5
  20
-1.0
+1.5
   0
 TEXT
   5
@@ -2125,11 +2125,11 @@ TEXT
 100
 AcDbEntity
   8
-pier_2
+pier2
 100
 AcDbText
  10
-11.0
+10.5
  20
 0.0
  30
@@ -2137,9 +2137,9 @@ AcDbText
  40
 0.6
   1
-橋脚P2
+橋脚
  11
-11.0
+10.5
  21
 0.0
  31
@@ -2155,7 +2155,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-girder
+abutment_base
 100
 AcDbPolyline
  90
@@ -2163,21 +2163,21 @@ AcDbPolyline
  70
 1
  10
--20.0
+-22.0
  20
--4.0
+-5.0
  10
-20.0
+-18.0
  20
--4.0
+-5.0
  10
-20.0
+-18.0
  20
-4.0
+5.0
  10
--20.0
+-22.0
  20
-4.0
+5.0
   0
 TEXT
   5
@@ -2187,11 +2187,11 @@ TEXT
 100
 AcDbEntity
   8
-girder
+abutment_base
 100
 AcDbText
  10
--20.0
+-22.0
  20
 0.0
  30
@@ -2199,9 +2199,9 @@ AcDbText
  40
 0.6
   1
-主桁
+橋台基礎
  11
--20.0
+-22.0
  21
 0.0
  31
@@ -2217,7 +2217,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-slab
+deck_slab
 100
 AcDbPolyline
  90
@@ -2249,7 +2249,7 @@ TEXT
 100
 AcDbEntity
   8
-slab
+deck_slab
 100
 AcDbText
  10
@@ -2261,7 +2261,7 @@ AcDbText
  40
 0.6
   1
-床版
+床版（主桁）
  11
 -20.0
  21
@@ -2279,7 +2279,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-rail
+expansion_joint
 100
 AcDbPolyline
  90
@@ -2289,13 +2289,13 @@ AcDbPolyline
  10
 -20.0
  20
-4.199999999999999
+-4.5
  10
-20.0
+-19.0
  20
-4.199999999999999
+-4.5
  10
-20.0
+-19.0
  20
 4.5
  10
@@ -2311,13 +2311,75 @@ TEXT
 100
 AcDbEntity
   8
-rail
+expansion_joint
 100
 AcDbText
  10
 -20.0
  20
-4.35
+0.0
+ 30
+0.0
+ 40
+0.6
+  1
+伸縮装置
+ 11
+-20.0
+ 21
+0.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+39
+330
+17
+100
+AcDbEntity
+  8
+railing
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-20.0
+ 20
+4.1499999999999995
+ 10
+20.0
+ 20
+4.1499999999999995
+ 10
+20.0
+ 20
+4.45
+ 10
+-20.0
+ 20
+4.45
+  0
+TEXT
+  5
+3A
+330
+17
+100
+AcDbEntity
+  8
+railing
+100
+AcDbText
+ 10
+-20.0
+ 20
+4.3
  30
 0.0
  40
@@ -2327,7 +2389,131 @@ AcDbText
  11
 -20.0
  21
-4.35
+4.3
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+3B
+330
+17
+100
+AcDbEntity
+  8
+river_channel
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-20.0
+ 20
+-10.0
+ 10
+20.0
+ 20
+-10.0
+ 10
+20.0
+ 20
+10.0
+ 10
+-20.0
+ 20
+10.0
+  0
+TEXT
+  5
+3C
+330
+17
+100
+AcDbEntity
+  8
+river_channel
+100
+AcDbText
+ 10
+-20.0
+ 20
+0.0
+ 30
+0.0
+ 40
+0.6
+  1
+河川流路
+ 11
+-20.0
+ 21
+0.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+3D
+330
+17
+100
+AcDbEntity
+  8
+riverbank_slope
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-20.0
+ 20
+-15.0
+ 10
+20.0
+ 20
+-15.0
+ 10
+20.0
+ 20
+-9.0
+ 10
+-20.0
+ 20
+-9.0
+  0
+TEXT
+  5
+3E
+330
+17
+100
+AcDbEntity
+  8
+riverbank_slope
+100
+AcDbText
+ 10
+-20.0
+ 20
+-12.0
+ 30
+0.0
+ 40
+0.6
+  1
+護岸法面
+ 11
+-20.0
+ 21
+-12.0
  31
 0.0
 100
@@ -3323,7 +3509,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-3B
+41
   0
 DICTIONARYVAR
   5
@@ -3335,11 +3521,11 @@ DictionaryVariables
 280
 0
   1
-1.4.4 @ 2026-08-13T09:01:34.889189+00:00
+1.4.4 @ 2026-08-15T12:32:08.313258+00:00
   0
 DICTIONARYVAR
   5
-3B
+41
 330
 2D
 100
@@ -3347,7 +3533,7 @@ DictionaryVariables
 280
 0
   1
-1.4.4 @ 2026-08-13T09:01:34.890791+00:00
+1.4.4 @ 2026-08-15T12:32:08.314553+00:00
   0
 ENDSEC
   0

@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461268.364189815
+2461268.8980555558
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461268.364189815
+2461268.8980555558
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-40
+42
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{254536AE-8E7F-4DB6-BBDF-7A8F2A57C854}
+{1B5B11CF-0F19-4816-A018-54D7DEB32F22}
   9
 $VERSIONGUID
   2
-{8460EC8A-4ECD-4859-81FA-C1DA6794C006}
+{9EFDA0F4-4B54-4918-A85E-8682D89D2658}
   9
 $EXTNAMES
 290
@@ -1701,7 +1701,7 @@ ACAD
   0
 APPID
   5
-3D
+3F
 330
 3
 100
@@ -1715,7 +1715,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-3E
+40
 330
 3
 100
@@ -2031,7 +2031,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-fence
+main_building
 100
 AcDbPolyline
  90
@@ -2039,21 +2039,21 @@ AcDbPolyline
  70
 1
  10
--20.0
+-15.0
  20
--0.1
+-7.5
  10
-20.0
+15.0
  20
--0.1
+-7.5
  10
-20.0
+15.0
  20
-0.1
+7.5
  10
--20.0
+-15.0
  20
-0.1
+7.5
   0
 TEXT
   5
@@ -2063,7 +2063,131 @@ TEXT
 100
 AcDbEntity
   8
-fence
+main_building
+100
+AcDbText
+ 10
+-15.0
+ 20
+0.0
+ 30
+0.0
+ 40
+0.6
+  1
+校舎躯体（RC造3階建・解体対象）
+ 11
+-15.0
+ 21
+0.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+31
+330
+17
+100
+AcDbEntity
+  8
+gym_wing
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-30.0
+ 20
+-1.0
+ 10
+-14.0
+ 20
+-1.0
+ 10
+-14.0
+ 20
+11.0
+ 10
+-30.0
+ 20
+11.0
+  0
+TEXT
+  5
+32
+330
+17
+100
+AcDbEntity
+  8
+gym_wing
+100
+AcDbText
+ 10
+-30.0
+ 20
+5.0
+ 30
+0.0
+ 40
+0.6
+  1
+体育館側棟
+ 11
+-30.0
+ 21
+5.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+33
+330
+17
+100
+AcDbEntity
+  8
+temp_fence
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-20.0
+ 20
+-11.0
+ 10
+20.0
+ 20
+-11.0
+ 10
+20.0
+ 20
+11.0
+ 10
+-20.0
+ 20
+11.0
+  0
+TEXT
+  5
+34
+330
+17
+100
+AcDbEntity
+  8
+temp_fence
 100
 AcDbText
  10
@@ -2087,137 +2211,13 @@ AcDbText
   0
 LWPOLYLINE
   5
-31
-330
-17
-100
-AcDbEntity
-  8
-main_building
-100
-AcDbPolyline
- 90
-4
- 70
-1
- 10
--15.0
- 20
--7.5
- 10
-15.0
- 20
--7.5
- 10
-15.0
- 20
-7.5
- 10
--15.0
- 20
-7.5
-  0
-TEXT
-  5
-32
-330
-17
-100
-AcDbEntity
-  8
-main_building
-100
-AcDbText
- 10
--15.0
- 20
-0.0
- 30
-0.0
- 40
-0.6
-  1
-旧校舎躯体（RC造3階建・解体前形状）
- 11
--15.0
- 21
-0.0
- 31
-0.0
-100
-AcDbText
-  0
-LWPOLYLINE
-  5
-33
-330
-17
-100
-AcDbEntity
-  8
-gym_wing
-100
-AcDbPolyline
- 90
-4
- 70
-1
- 10
-14.5
- 20
--6.0
- 10
-29.5
- 20
--6.0
- 10
-29.5
- 20
-6.0
- 10
-14.5
- 20
-6.0
-  0
-TEXT
-  5
-34
-330
-17
-100
-AcDbEntity
-  8
-gym_wing
-100
-AcDbText
- 10
-14.5
- 20
-0.0
- 30
-0.0
- 40
-0.6
-  1
-体育館側棟
- 11
-14.5
- 21
-0.0
- 31
-0.0
-100
-AcDbText
-  0
-LWPOLYLINE
-  5
 35
 330
 17
 100
 AcDbEntity
   8
-floor1_remain
+foundation
 100
 AcDbPolyline
  90
@@ -2249,7 +2249,7 @@ TEXT
 100
 AcDbEntity
   8
-floor1_remain
+foundation
 100
 AcDbText
  10
@@ -2261,7 +2261,7 @@ AcDbText
  40
 0.6
   1
-1階部分（解体後残存部）
+基礎部分（掘削対象）
  11
 -15.0
  21
@@ -2279,7 +2279,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-foundation
+asbestos_zone
 100
 AcDbPolyline
  90
@@ -2287,21 +2287,21 @@ AcDbPolyline
  70
 1
  10
--15.0
+6.0
  20
--7.5
+2.0
  10
-15.0
+14.0
  20
--7.5
+2.0
  10
-15.0
+14.0
  20
-7.5
+8.0
  10
--15.0
+6.0
  20
-7.5
+8.0
   0
 TEXT
   5
@@ -2311,23 +2311,23 @@ TEXT
 100
 AcDbEntity
   8
-foundation
+asbestos_zone
 100
 AcDbText
  10
--15.0
+6.0
  20
-0.0
+5.0
  30
 0.0
  40
 0.6
   1
-基礎部分
+アスベスト除去区画（理科室配管系統）
  11
--15.0
+6.0
  21
-0.0
+5.0
  31
 0.0
 100
@@ -2341,7 +2341,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-debris_yard
+demolition_yard
 100
 AcDbPolyline
  90
@@ -2349,21 +2349,21 @@ AcDbPolyline
  70
 1
  10
--25.0
+-10.0
  20
-6.0
+9.0
  10
--15.0
+10.0
  20
-6.0
+9.0
  10
--15.0
+10.0
  20
-14.0
+15.0
  10
--25.0
+-10.0
  20
-14.0
+15.0
   0
 TEXT
   5
@@ -2373,23 +2373,23 @@ TEXT
 100
 AcDbEntity
   8
-debris_yard
+demolition_yard
 100
 AcDbText
  10
--25.0
+-10.0
  20
-10.0
+12.0
  30
 0.0
  40
 0.6
   1
-がれき集積・分別ヤード
+解体重機作業ヤード
  11
--25.0
+-10.0
  21
-10.0
+12.0
  31
 0.0
 100
@@ -2403,7 +2403,69 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-cleared_ground
+debris_pile
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+12.0
+ 20
+-12.0
+ 10
+20.0
+ 20
+-12.0
+ 10
+20.0
+ 20
+-4.0
+ 10
+12.0
+ 20
+-4.0
+  0
+TEXT
+  5
+3C
+330
+17
+100
+AcDbEntity
+  8
+debris_pile
+100
+AcDbText
+ 10
+12.0
+ 20
+-8.0
+ 30
+0.0
+ 40
+0.6
+  1
+廃材仮置き山（コンクリートがら）
+ 11
+12.0
+ 21
+-8.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+3D
+330
+17
+100
+AcDbEntity
+  8
+site_clearance
 100
 AcDbPolyline
  90
@@ -2429,13 +2491,13 @@ AcDbPolyline
   0
 TEXT
   5
-3C
+3E
 330
 17
 100
 AcDbEntity
   8
-cleared_ground
+site_clearance
 100
 AcDbText
  10
@@ -2447,7 +2509,7 @@ AcDbText
  40
 0.6
   1
-整地・更地化面
+解体完了確認範囲（更地）
  11
 -15.0
  21
@@ -3447,7 +3509,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-3F
+41
   0
 DICTIONARYVAR
   5
@@ -3459,11 +3521,11 @@ DictionaryVariables
 280
 0
   1
-1.4.4 @ 2026-08-14T23:44:26.824047+00:00
+1.4.4 @ 2026-08-15T12:33:12.086793+00:00
   0
 DICTIONARYVAR
   5
-3F
+41
 330
 2D
 100
@@ -3471,7 +3533,7 @@ DictionaryVariables
 280
 0
   1
-1.4.4 @ 2026-08-14T23:44:26.825279+00:00
+1.4.4 @ 2026-08-15T12:33:12.089169+00:00
   0
 ENDSEC
   0

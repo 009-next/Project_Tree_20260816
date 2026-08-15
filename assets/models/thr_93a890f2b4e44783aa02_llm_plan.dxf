@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461266.751087963
+2461268.8966666665
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461266.751087963
+2461268.8966666665
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-3A
+40
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{1271C754-094B-420D-8A34-4D7B54E75149}
+{1EA6854D-FA85-4F47-A4A5-EA060D7C31AF}
   9
 $VERSIONGUID
   2
-{83397986-50E9-4DD6-BA21-F6A6D89940C9}
+{52B1E4CC-A7DD-4E11-9032-B7CEF004796B}
   9
 $EXTNAMES
 290
@@ -1701,7 +1701,7 @@ ACAD
   0
 APPID
   5
-37
+3D
 330
 3
 100
@@ -1715,7 +1715,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-38
+3E
 330
 3
 100
@@ -2031,7 +2031,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-base
+revetment_slope
 100
 AcDbPolyline
  90
@@ -2041,19 +2041,19 @@ AcDbPolyline
  10
 -15.0
  20
--1.5
+-5.0
  10
 15.0
  20
--1.5
+-5.0
  10
 15.0
  20
-1.5
+5.0
  10
 -15.0
  20
-1.5
+5.0
   0
 TEXT
   5
@@ -2063,7 +2063,69 @@ TEXT
 100
 AcDbEntity
   8
-base
+revetment_slope
+100
+AcDbText
+ 10
+-15.0
+ 20
+0.0
+ 30
+0.0
+ 40
+0.6
+  1
+護岸ブロック積み(法面)
+ 11
+-15.0
+ 21
+0.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+31
+330
+17
+100
+AcDbEntity
+  8
+foundation
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-15.0
+ 20
+-3.0
+ 10
+15.0
+ 20
+-3.0
+ 10
+15.0
+ 20
+3.0
+ 10
+-15.0
+ 20
+3.0
+  0
+TEXT
+  5
+32
+330
+17
+100
+AcDbEntity
+  8
+foundation
 100
 AcDbText
  10
@@ -2087,75 +2149,13 @@ AcDbText
   0
 LWPOLYLINE
   5
-31
-330
-17
-100
-AcDbEntity
-  8
-toe
-100
-AcDbPolyline
- 90
-4
- 70
-1
- 10
--15.0
- 20
-1.5
- 10
-15.0
- 20
-1.5
- 10
-15.0
- 20
-3.5
- 10
--15.0
- 20
-3.5
-  0
-TEXT
-  5
-32
-330
-17
-100
-AcDbEntity
-  8
-toe
-100
-AcDbText
- 10
--15.0
- 20
-2.5
- 30
-0.0
- 40
-0.6
-  1
-根固工
- 11
--15.0
- 21
-2.5
- 31
-0.0
-100
-AcDbText
-  0
-LWPOLYLINE
-  5
 33
 330
 17
 100
 AcDbEntity
   8
-block
+riverbed_protection
 100
 AcDbPolyline
  90
@@ -2165,19 +2165,19 @@ AcDbPolyline
  10
 -15.0
  20
--2.5
+-10.0
  10
 15.0
  20
--2.5
+-10.0
  10
 15.0
  20
-2.5
+-2.0
  10
 -15.0
  20
-2.5
+-2.0
   0
 TEXT
   5
@@ -2187,23 +2187,23 @@ TEXT
 100
 AcDbEntity
   8
-block
+riverbed_protection
 100
 AcDbText
  10
 -15.0
  20
-0.0
+-6.0
  30
 0.0
  40
 0.6
   1
-護岸ブロック
+河床根固め工
  11
 -15.0
  21
-0.0
+-6.0
  31
 0.0
 100
@@ -2217,7 +2217,7 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-capping
+sediment_pond
 100
 AcDbPolyline
  90
@@ -2225,21 +2225,21 @@ AcDbPolyline
  70
 1
  10
--15.0
+16.0
  20
--3.5
+12.0
  10
-15.0
+24.0
  20
--3.5
+12.0
  10
-15.0
+24.0
  20
--1.5
+18.0
  10
--15.0
+16.0
  20
--1.5
+18.0
   0
 TEXT
   5
@@ -2249,23 +2249,209 @@ TEXT
 100
 AcDbEntity
   8
-capping
+sediment_pond
 100
 AcDbText
  10
--15.0
+16.0
  20
--2.5
+15.0
  30
 0.0
  40
 0.6
   1
-天端工
+仮設沈砂池
+ 11
+16.0
+ 21
+15.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+37
+330
+17
+100
+AcDbEntity
+  8
+sediment_pond_extension
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+27.0
+ 20
+12.5
+ 10
+33.0
+ 20
+12.5
+ 10
+33.0
+ 20
+17.5
+ 10
+27.0
+ 20
+17.5
+  0
+TEXT
+  5
+38
+330
+17
+100
+AcDbEntity
+  8
+sediment_pond_extension
+100
+AcDbText
+ 10
+27.0
+ 20
+15.0
+ 30
+0.0
+ 40
+0.6
+  1
+増設沈砂池
+ 11
+27.0
+ 21
+15.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+39
+330
+17
+100
+AcDbEntity
+  8
+temp_facility
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-18.0
+ 20
+8.0
+ 10
+-12.0
+ 20
+8.0
+ 10
+-12.0
+ 20
+12.0
+ 10
+-18.0
+ 20
+12.0
+  0
+TEXT
+  5
+3A
+330
+17
+100
+AcDbEntity
+  8
+temp_facility
+100
+AcDbText
+ 10
+-18.0
+ 20
+10.0
+ 30
+0.0
+ 40
+0.6
+  1
+仮設土のう・機材固定エリア
+ 11
+-18.0
+ 21
+10.0
+ 31
+0.0
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+3B
+330
+17
+100
+AcDbEntity
+  8
+crest_protection
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 10
+-15.0
+ 20
+2.0
+ 10
+15.0
+ 20
+2.0
+ 10
+15.0
+ 20
+5.0
+ 10
+-15.0
+ 20
+5.0
+  0
+TEXT
+  5
+3C
+330
+17
+100
+AcDbEntity
+  8
+crest_protection
+100
+AcDbText
+ 10
+-15.0
+ 20
+3.5
+ 30
+0.0
+ 40
+0.6
+  1
+天端保護工
  11
 -15.0
  21
--2.5
+3.5
  31
 0.0
 100
@@ -3261,7 +3447,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-39
+3F
   0
 DICTIONARYVAR
   5
@@ -3273,11 +3459,11 @@ DictionaryVariables
 280
 0
   1
-1.4.4 @ 2026-08-13T09:01:34.982113+00:00
+1.4.4 @ 2026-08-15T12:31:12.408439+00:00
   0
 DICTIONARYVAR
   5
-39
+3F
 330
 2D
 100
@@ -3285,7 +3471,7 @@ DictionaryVariables
 280
 0
   1
-1.4.4 @ 2026-08-13T09:01:34.983169+00:00
+1.4.4 @ 2026-08-15T12:31:12.410806+00:00
   0
 ENDSEC
   0
