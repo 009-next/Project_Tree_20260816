@@ -84,9 +84,14 @@ def fix_asset_paths():
     ledger.close()
 
 
-def open_browser_when_ready(port: int):
+def open_browser_when_ready(port: int, token: str | None = None):
     time.sleep(1.5)
-    webbrowser.open(f"http://127.0.0.1:{port}{ENTRY_PATH}")
+    url = f"http://127.0.0.1:{port}{ENTRY_PATH}"
+    if token:
+        # 最初の1回だけ URL にトークンを付ける。受け取った側が Cookie を
+        # 発行してトークン無しのURLへ戻すので、以後は普通に使える。
+        url += f"?pt_token={token}"
+    webbrowser.open(url)
 
 
 def _build_stamp() -> str:
@@ -137,14 +142,32 @@ def main():
     fix_asset_paths()
     ingested = auto_ingest()
     port = find_free_port()
-    threading.Thread(target=open_browser_when_ready, args=(port,), daemon=True).start()
 
-    print(f"Project_Tree を起動します: http://127.0.0.1:{port}{ENTRY_PATH}")
+    # API を起動ごとのトークンで守る。画面は開くときに一度だけトークンを渡し、
+    # 以後は Cookie で通るので操作は変わらない（projecttree.html は無変更）。
+    token = None
+    try:
+        from projecttree import authguard as _auth
+        from projecttree import security as _sec
+        token = _sec.SessionToken().token
+        if not _auth.install(fastapi_app, token):
+            token = None          # PT_NO_AUTH=1 のときは従来どおり
+    except Exception as e:
+        token = None
+        print(f"  ※ API保護を有効にできませんでした（{type(e).__name__}）。従来どおり起動します。")
+
+    threading.Thread(target=open_browser_when_ready, args=(port, token), daemon=True).start()
+
+    entry = f"http://127.0.0.1:{port}{ENTRY_PATH}"
+    if token:
+        entry += f"?pt_token={token}"
+    print(f"Project_Tree を起動します: {entry}")
     print(f"  従来の台帳UI            : http://127.0.0.1:{port}/")
     print(f"  台帳ファイル            : {app_dir() / 'ledger.db'}")
     # どのビルド・どのデータで動いているのかを起動時に必ず示す。
     # ポートが自動で変わったとき、古いタブを見ていることに気づけるようにするため。
     print(f"  ビルド日時              : {_build_stamp()}")
+    print(f"  API保護                 : {'有効（起動ごとのトークン）' if token else '無効（PT_NO_AUTH=1）'}")
     if ingested:
         print(f"  {ingested}")
     print(f"  案件数                  : {_thread_count()}")
