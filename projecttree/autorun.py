@@ -284,6 +284,39 @@ def _run_extract(ledger: Ledger, thread_id: str) -> dict:
     cost_before = ledger.conn.execute(
         "SELECT COALESCE(SUM(cost_usd),0) s FROM runs").fetchone()["s"]
 
+    # まず並列で試す。抽出の中身（プロンプト・原文照合）は extractor のものを
+    # そのまま使い、1件ずつ順に待つのをやめるだけ。実測で資料1件あたり
+    # 100〜165 秒かかっており、ここが全体の約7割を占めていた。
+    # 使えなければ従来の extractor.main() へ落ちる。
+    parallel = None
+    try:
+        from projecttree import fastextract as _fx
+        parallel = _fx.run(ledger)
+    except Exception as e:
+        parallel = {"status": "unavailable", "reason": f"{type(e).__name__}: {str(e)[:120]}"}
+
+    if parallel and parallel.get("status") in ("ok", "empty"):
+        llm.client = prev_client
+        llm.MODEL_EXTRACT = prev_model
+        if parallel["status"] == "empty":
+            return {"status": "skipped", "reason": "未抽出の資料はありません", "cost_usd": 0.0}
+        added = parallel.get("events_added", 0)
+        if added == 0:
+            textless = sum(1 for d in pending if d["source_type"] == "attachment")
+            if textless == len(pending):
+                return {"status": "skipped", "documents": len(pending), "events_added": 0,
+                        "cost_usd": parallel.get("cost_usd", 0.0),
+                        "reason": f"残り {len(pending)} 件は本文を持たない添付のみです"}
+            return {"status": "error", "documents": len(pending), "events_added": 0,
+                    "cost_usd": parallel.get("cost_usd", 0.0),
+                    "reason": "資料はありましたが、抽出できたイベントが0件でした。"
+                              "APIキーと接続先（⚙設定）を確認してください。",
+                    "errors": parallel.get("errors")}
+        return {"status": "ok", "documents": parallel.get("documents", len(pending)),
+                "events_added": added, "cost_usd": parallel.get("cost_usd", 0.0),
+                "parallel": parallel.get("workers"), "errors": parallel.get("errors")}
+
+    # ここから従来経路（並列が使えなかった場合）。
     # extractor.main() は argparse で sys.argv を読む。サーバー内から呼ぶと
     # uvicorn の引数を拾ってしまうので、呼び出しの間だけ差し替える。
     # extractor.py 自体は変更しない。
@@ -490,8 +523,45 @@ def _run_illust(ledger: Ledger, thread_id: str, _ill) -> dict:
                 "cost_usd": 0.0}
 
     made, cost, errs = [], 0.0, []
+
+    # 1枚あたり実測 35 秒。段階5枚を順に待つと3分近くかかるので、同時に投げる。
+    # illustrate.generate() は台帳の読み書きを含み、sqlite3 の接続は作成した
+    # スレッドでしか使えないため、スレッドごとに専用の接続を渡す。
+    # 書き込みが重なったときのために busy_timeout を入れて待たせる。
+    # illustrate.py は変更しない。
+    results: dict[int, dict] = {}
+    db_path = None
+    try:
+        row = ledger.conn.execute("PRAGMA database_list").fetchone()
+        db_path = row[2] if row and row[2] else None
+    except Exception:
+        db_path = None
+
+    if db_path and len(todo) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def one(n):
+            lg = Ledger(db_path)
+            try:
+                lg.conn.execute("PRAGMA busy_timeout=30000")
+                return n, _ill.generate(lg, thread_id, stage_no=n, confirm=True)
+            except Exception as e:
+                return n, {"status": "error", "reason": f"{type(e).__name__}: {str(e)[:120]}"}
+            finally:
+                lg.close()
+
+        try:
+            with ThreadPoolExecutor(max_workers=min(5, len(todo))) as pool:
+                for n, r in pool.map(one, todo):
+                    results[n] = r
+        except Exception:
+            results = {}          # 並列に失敗したら下の逐次へ落とす
+    n_parallel = len(results)
+
     for n in todo:
-        r = _ill.generate(ledger, thread_id, stage_no=n, confirm=True)
+        r = results.get(n)
+        if r is None:             # 並列を使わなかった／落ちた分だけ順に作る
+            r = _ill.generate(ledger, thread_id, stage_no=n, confirm=True)
         cost += r.get("cost_usd") or 0
         if r.get("status") == "ok":
             made.append(n)
@@ -499,4 +569,5 @@ def _run_illust(ledger: Ledger, thread_id: str, _ill) -> dict:
             errs.append({"stage_no": n, "reason": r.get("reason")})
     return {"status": "ok" if made else "error",
             "created_stages": made, "errors": errs,
+            "parallel": n_parallel or None,
             "cost_usd": round(cost, 4)}
