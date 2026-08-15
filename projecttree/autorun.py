@@ -270,6 +270,16 @@ def _run_extract(ledger: Ledger, thread_id: str) -> dict:
         return {"status": "error",
                 "reason": f"APIキーを解決できません（⚙設定 から登録してください）: {e}"}
 
+    # モデル名も接続先に合わせる。llm.MODEL_EXTRACT は "claude-haiku-4-5" という
+    # Anthropic の名前で固定されており、Orca Router へはそのまま渡せない
+    # （503 model_not_found になり、抽出が全件落ちる）。
+    # クライアントと同じ要領で、呼ぶ間だけ差し替えて必ず戻す。
+    from projecttree import models as _models
+    prev_model = llm.MODEL_EXTRACT
+    mapped = _models.model_for_task("extract_event")
+    if mapped:
+        llm.MODEL_EXTRACT = mapped
+
     before = ledger.conn.execute("SELECT COUNT(*) c FROM events").fetchone()["c"]
     cost_before = ledger.conn.execute(
         "SELECT COALESCE(SUM(cost_usd),0) s FROM runs").fetchone()["s"]
@@ -288,6 +298,7 @@ def _run_extract(ledger: Ledger, thread_id: str) -> dict:
     finally:
         sys.argv = argv
         llm.client = prev_client
+        llm.MODEL_EXTRACT = prev_model
 
     after = ledger.conn.execute("SELECT COUNT(*) c FROM events").fetchone()["c"]
     cost_after = ledger.conn.execute(
@@ -336,6 +347,14 @@ def _run_thread(ledger: Ledger, thread_id: str) -> dict:
         return {"status": "error",
                 "reason": f"APIキーを解決できません（⚙設定 から登録してください）: {e}"}
 
+    # extract と同じ理由でモデル名も接続先に合わせる（Orca へ Anthropic の
+    # 名前をそのまま渡すと 503 model_not_found になる）。
+    from projecttree import models as _models
+    prev_model = llm.MODEL_THREAD
+    mapped = _models.model_for_task("thread_assign")
+    if mapped:
+        llm.MODEL_THREAD = mapped
+
     cost_before = ledger.conn.execute(
         "SELECT COALESCE(SUM(cost_usd),0) s FROM runs").fetchone()["s"]
     thread_err = None
@@ -347,6 +366,7 @@ def _run_thread(ledger: Ledger, thread_id: str) -> dict:
         thread_err = f"{type(e).__name__}: {str(e)[:160]}"
     finally:
         llm.client = prev_client
+        llm.MODEL_THREAD = prev_model
 
     left = ledger.conn.execute(
         "SELECT COUNT(*) c FROM events WHERE thread_id IS NULL").fetchone()["c"]

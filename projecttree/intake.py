@@ -22,7 +22,11 @@ from projecttree import security
 TEXT_EXT = {".txt", ".md"}
 DOC_EXT = {".pdf", ".docx", ".pptx"}
 IMAGE_EXT = {".jpg", ".jpeg", ".png"}
-ACCEPTED_EXT = TEXT_EXT | DOC_EXT | IMAGE_EXT
+# メール(.eml)。資料では入力の例として「議事録・メール」を挙げており、
+# 一括取込の ingest.py は元から .eml を読めるのに、画面からの取り込みだけが
+# 弾いていた。差し替えではなく受け付ける形式を足すだけにする。
+MAIL_EXT = {".eml"}
+ACCEPTED_EXT = TEXT_EXT | DOC_EXT | IMAGE_EXT | MAIL_EXT
 
 MAX_UPLOAD_BYTES = 30 * 1024 * 1024
 MAX_TEXT_CHARS = 400_000
@@ -84,6 +88,7 @@ def extract_text(data: bytes, filename: str) -> tuple[str, str]:
     ext = ("." + filename.rsplit(".", 1)[-1]).lower() if "." in filename else ""
     if ext not in ACCEPTED_EXT:
         raise IntakeRejected(f"未対応の形式です: {ext or filename}")
+
     if len(data) > MAX_UPLOAD_BYTES:
         raise IntakeRejected(f"ファイルが大きすぎます（上限 {MAX_UPLOAD_BYTES // 1024 // 1024}MB）")
 
@@ -94,6 +99,9 @@ def extract_text(data: bytes, filename: str) -> tuple[str, str]:
             except UnicodeDecodeError:
                 continue
         raise IntakeRejected("文字コードを判定できませんでした")
+    if ext in MAIL_EXT:
+        # source_type は documents の CHECK に合わせて 'email'
+        return _from_eml(data), "email"
     if ext == ".pdf":
         return _from_pdf(data, filename), "report"
     if ext == ".docx":
@@ -104,6 +112,36 @@ def extract_text(data: bytes, filename: str) -> tuple[str, str]:
         # 画像は本文を持たない。台帳には添付として記録し、参照だけ残す。
         return "", "attachment"
     raise IntakeRejected(f"未対応の形式です: {ext}")
+
+
+def _from_eml(data: bytes) -> str:
+    """メールを本文へ直す。解析は一括取込で実績のある ingest.parse_eml を使う。
+
+    差出人・宛先・件名は本文の頭に残す。抽出器が日付や関係者を拾う手掛かりになり、
+    原文照合（verify_span）の対象にもなるため、捨てずに文章として持たせる。
+    """
+    text = None
+    for enc in ("utf-8", "cp932", "utf-16"):
+        try:
+            text = data.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        raise IntakeRejected("文字コードを判定できませんでした")
+
+    try:
+        import ingest as _ingest
+        m = _ingest.parse_eml(text)
+    except Exception:
+        return text          # 解析できなければ生のまま渡す（取りこぼすより良い）
+
+    head = [f"{label}: {m[key]}" for key, label in
+            (("subject", "件名"), ("from", "差出人"), ("to", "宛先")) if m.get(key)]
+    body = (m.get("body") or "").strip()
+    if not body:
+        return text
+    return ("\n".join(head) + "\n\n" + body) if head else body
 
 
 # ---------------------------------------------------------------- 取り込み

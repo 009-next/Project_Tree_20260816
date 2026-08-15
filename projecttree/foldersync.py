@@ -42,8 +42,12 @@ FOLDER_SPEC: dict[str, set[str]] = {
 DOC_FOLDERS = {"pdf", "docx", "pptx", "xlsx", "txt", "md"}
 MODEL_FOLDERS = {"2dmodel", "3dmodel"}
 
-# 台帳の抽出が読める拡張子（intake.py の受け入れと揃える）
-INTAKE_EXT = {".txt", ".md", ".pdf", ".docx", ".pptx", ".jpg", ".jpeg", ".png"}
+# 台帳の抽出が読める拡張子。
+# 以前ここに同じ集合を書き写していたため、intake.py 側に .eml を足しても
+# フォルダ取込だけが弾き続けるずれが起きた。二重管理をやめ、intake から引く。
+def _intake_ext() -> set[str]:
+    from projecttree import intake as _in
+    return set(_in.ACCEPTED_EXT)
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 
 
@@ -94,7 +98,7 @@ def classify(rel_path: str) -> tuple[str | None, str]:
             return "doc", f"{name}/ に置かれていました"
 
     # 第二根拠: 拡張子で判断する
-    if ext in INTAKE_EXT:
+    if ext in _intake_ext():
         return "doc", "拡張子から資料と判断しました"
     if ext in FOLDER_SPEC["3dmodel"]:
         return "3d", "拡張子から3Dモデルと判断しました"
