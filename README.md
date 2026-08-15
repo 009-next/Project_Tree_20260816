@@ -61,6 +61,7 @@ projecttree/          Project_Tree の機能モジュール
   ├─ slides.py        段階カード用の画像生成
   ├─ modelgen.py      2D/3Dモデルの組み立て・書き出し（trimesh + ezdxf・Blender不要）
   ├─ modelgen_llm.py  記録から寸法をLLMに推定させてモデルを起こす
+  ├─ shapes_ext.py    形状の追加（アーチ・管・円錐・半球・片流れ）
   ├─ progress.py      部材進捗・全体進捗の算出
   ├─ exporters.py     資料出力（md / xlsx / pptx）
   ├─ docs.py          資料出力（pdf / word / 画像入りpptx）

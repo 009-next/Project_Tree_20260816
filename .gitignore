@@ -18,3 +18,6 @@ dist/
 exports/
 *.log
 server.log
+
+# Office の一時ロックファイル
+~$*

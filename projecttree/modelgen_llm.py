@@ -28,6 +28,7 @@ from paths import app_dir  # noqa: E402
 from projecttree import modelgen as _mg  # noqa: E402
 from projecttree import models as _models  # noqa: E402
 from projecttree import provider as _prov  # noqa: E402
+from projecttree import shapes_ext as _ext  # noqa: E402
 
 TASK = "modelgen_llm"
 
@@ -35,7 +36,17 @@ SYSTEM = """建設・土木の案件記録から、その工事で作られる�
 3Dモデルの組み立てパラメータとして出してください。
 
 出し方の決まり:
-- 形は box（直方体）/ cylinder（円柱）/ slope（台形断面）の3種類だけを使う。
+- 形は次の8種類から選ぶ。
+    box      直方体。壁・床・基礎・躯体・土工など、いちばん基本
+    cylinder 垂直に立つ円柱。橋脚・柱・立坑・煙突
+    slope    台形断面。護岸・堤防のような両側が傾いた盛土
+    arch     かまぼこ型（下が平らな半円）。トンネル・暗渠・アーチ屋根・カルバート
+    pipe     横に寝た中空の管。上下水道管・配管・ヒューム管
+    cone     円錐。ホッパー・土砂やアスファルト合材の仮置き山
+    dome     半球。タンクの上部・貯水槽・ドーム屋根
+    wedge    片流れ（片側だけ高い）。法面・片勾配の屋根・スロープ
+- 構造物の性質に合う形を選ぶ。何でも box で済ませない。
+  トンネルを box にする、管路を box にする、といったことはしない。
 - size と pos は必ず3つの数値［X, Y, Z］で書く。単位はメートル。
 - Y が高さ。地面は Y=0。部材は地面か他の部材の上に置き、宙に浮かせない。
 - pos は部材の中心。たとえば高さ2mの基礎を地面に置くなら pos の Y は 1.0。
@@ -47,8 +58,20 @@ SYSTEM = """建設・土木の案件記録から、その工事で作られる�
 形の使い分け（ここを外すと図が壊れる）:
 - cylinder は「垂直に立つ円柱」になる。size は［直径, 高さ, 直径］と解釈される。
   橋脚・柱・立坑のように縦に立つものだけに使う。
-- 横に寝た管・桁・梁は cylinder ではなく box を使う。
-  cylinder で横向きの管を表そうとしても、縦の円柱になってしまう。
+- 横に寝た管は cylinder ではなく pipe を使う。size は［長さ, 外径, 外径］。
+  上水道管・下水道管・ヒューム管・配管は必ず pipe にする。box にしない。
+- トンネル・暗渠・カルバート・アーチ状の屋根は arch を使う。box にしない。
+- 桁・梁のように断面が角ばった横長の部材は box でよい。
+
+迷ったときの対応表:
+    上下水道管・配管・管渠            -> pipe
+    トンネル・暗渠・ボックスカルバート -> arch
+    タンク上部・貯水槽・ドーム         -> dome
+    土砂やアスファルトの仮置き山・ホッパー -> cone
+    法面・片勾配の屋根・スロープ        -> wedge
+    護岸・堤防のような両側が傾いた盛土  -> slope
+    橋脚・柱・煙突・立坑              -> cylinder
+    上記以外（壁・床・基礎・躯体・土工）-> box
 
 大きさの目安（画面に収める）:
 - 構造物全体が、おおむね 40m（幅）× 20m（高さ）× 40m（奥行）に収まるようにする。
@@ -107,7 +130,7 @@ def _validate(params: dict) -> tuple[list[dict], list[str]]:
             dropped.append(f"{key}: size が3要素でない"); continue
         if not (isinstance(pos, list) and len(pos) == 3):
             dropped.append(f"{key}: pos が3要素でない"); continue
-        if p.get("shape") not in ("box", "cylinder", "slope"):
+        if p.get("shape") not in _ext.ALL_SHAPES:
             dropped.append(f"{key}: 未対応の形状 {p.get('shape')}"); continue
         try:
             stage = int(p.get("stage", 0))
@@ -143,7 +166,8 @@ def generate(ledger: Ledger, thread_id: str, *, confirm: bool = False) -> dict:
                 "context_chars": len(ctx), "events": n_ev}
 
     model = _models.model_for_task(TASK)
-    schema = _models.sanitize_schema(_mg.PARAMS_SCHEMA)
+    # 形状の選択肢だけを差し替えた写しを渡す。modelgen.PARAMS_SCHEMA は書き換えない。
+    schema = _models.sanitize_schema(_ext.extended_schema(_mg.PARAMS_SCHEMA))
     try:
         resp = _prov.get_client().messages.create(
             model=model, max_tokens=8000, system=SYSTEM,
@@ -174,24 +198,26 @@ def generate(ledger: Ledger, thread_id: str, *, confirm: bool = False) -> dict:
 
     params = {"type": params.get("type") or "llm", "units": "m", "parts": good}
 
-    # ここから先はローカル。形を作るのも書き出すのも既存の modelgen の関数。
+    # ここから先はローカル。立体化は拡張形状に対応した shapes_ext 側で行う
+    # （box / cylinder / slope はその中で modelgen へ委譲される）。
+    # 2D の平面図は部材の footprint しか使わないため modelgen のものをそのまま使う。
     out = app_dir() / "assets" / "models"
     out.mkdir(parents=True, exist_ok=True)
     made: dict = {}
 
     full_glb = out / f"{thread_id}_llm_full.glb"
-    used = _mg.export_glb(params, full_glb)
+    used = _ext.export_glb(params, full_glb)
     _mg.register_asset(ledger, thread_id, "3d", "glb", full_glb, source="llm")
     made["full_glb"] = (full_glb.name, len(used))
 
     stl = out / f"{thread_id}_llm_full.stl"
-    _mg.export_stl(params, stl)
+    _ext.export_stl(params, stl)
     _mg.register_asset(ledger, thread_id, "3d", "stl", stl, source="llm")
     made["stl"] = stl.name
 
     for stage_no in range(1, 6):
         p = out / f"{thread_id}_llm_stage{stage_no}.glb"
-        u = _mg.export_glb(params, p, upto_stage=stage_no)
+        u = _ext.export_glb(params, p, upto_stage=stage_no)
         if u:
             _mg.register_asset(ledger, thread_id, "3d", "glb", p,
                                stage_no=stage_no, source="llm")
@@ -205,7 +231,10 @@ def generate(ledger: Ledger, thread_id: str, *, confirm: bool = False) -> dict:
     _mg.register_asset(ledger, thread_id, "2d", "svg", svg, source="llm")
     made["2d"] = [dxf.name, svg.name]
 
-    _mg.persist_parts(ledger, thread_id, params, source="llm")
+    # 台帳の shape は CHECK(box/cylinder/slope) で縛られているので、
+    # 拡張形状は基本形状へ落とし、実際の形は params_json の ext_shape に残す。
+    _mg.persist_parts(ledger, thread_id,
+                      {**params, "parts": _ext.to_ledger_parts(good)}, source="llm")
 
     return {"status": "ok", "thread_id": thread_id, "name": row["name"],
             "source": "llm", "model": model, "usage": usage,
