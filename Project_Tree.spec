@@ -19,7 +19,7 @@ a = Analysis(
         'projecttree.projects', 'projecttree.slides', 'projecttree.stages', 'projecttree.vision',
         # 記録から2D/3Dを起こす経路と、公開URL用の閲覧専用ガード
         'projecttree.modelgen_llm', 'projecttree.readonly', 'projecttree.visibility',
-        'projecttree.shapes_ext',
+        'projecttree.shapes_ext', 'projecttree.autoingest',
         'projecttree.docthread', 'projecttree.foldersync',
         'docx', 'docx.shared', 'docx.enum.text',
         'trimesh', 'trimesh.exchange.gltf', 'trimesh.exchange.stl',

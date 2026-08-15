@@ -29,7 +29,12 @@ def cost_usd(usage: dict, model: str) -> float:
         "claude-sonnet-5": (2.0, 10.0),
         "claude-opus-5": (5.0, 25.0),
     }
-    in_rate, out_rate = rates.get(model, (0.0, 0.0))
+    # Orca Router を使うとモデル名が "anthropic/claude-sonnet-5" のように
+    # 接頭辞付きで渡る。そのままだと表に無く原価が 0 と記録されてしまうため、
+    # 完全一致で引けなかったときだけ接頭辞を外して引き直す。
+    # 既存の名前（接頭辞なし）の扱いは変わらない。
+    in_rate, out_rate = rates.get(
+        model, rates.get((model or "").rsplit("/", 1)[-1], (0.0, 0.0)))
     cache_read_cost = usage.get("cache_read_tokens", 0) / 1_000_000 * in_rate * 0.1
     cache_write_cost = usage.get("cache_write_tokens", 0) / 1_000_000 * in_rate * 1.25
     input_cost = usage.get("input_tokens", 0) / 1_000_000 * in_rate

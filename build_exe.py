@@ -20,7 +20,9 @@ OUT = ROOT / "dist" / "Project_Tree"
 
 # exe の隣に置く必要があるもの（書き込み対象・生成物）
 DATA_FILES = ["ledger.db"]
-DATA_DIRS = ["assets", "uploads"]
+# demo/ は当日デモの素材（取り込むフォルダ・0件の台帳・手順書）。
+# exe だけを配っても 0 件から再現できるよう、隣へ置く。
+DATA_DIRS = ["assets", "uploads", "demo"]
 
 
 def main():

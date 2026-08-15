@@ -40,6 +40,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--restore", action="store_true", help="退避した台帳へ戻す")
     ap.add_argument("--list", action="store_true", help="退避一覧を表示")
+    ap.add_argument("--inbox", action="store_true",
+                    help="0件にしたうえで、取込フォルダに案件フォルダを置く"
+                         "（起動しただけで取り込まれた状態にする）")
     args = ap.parse_args()
 
     if args.list:
@@ -73,6 +76,30 @@ def main():
 
     shutil.copy2(EMPTY, LIVE)
     print(f"0件の台帳に差し替えました（{summary(LIVE)}）")
+
+    if args.inbox:
+        inbox = ROOT / "取込フォルダ"
+        inbox.mkdir(exist_ok=True)
+        n = 0
+        for src in (ROOT / "demo").iterdir():
+            if not src.is_dir() or src.name == "空の台帳":
+                continue
+            dst = inbox / src.name
+            if dst.exists():
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+            n += 1
+        print(f"取込フォルダに {n} 案件を置きました: {inbox}")
+        print("→ 起動しただけで取り込まれた状態になります（画面操作は不要・原価0円）")
+        print()
+        print("次の手順:")
+        print("  1. Project_Tree.exe を起動（取り込み済みの状態で立ち上がる）")
+        print("  2. ⚙設定 でAPIキーを入れる")
+        print("  3. ▶出力 を押す（見積りダイアログが出る）")
+        print()
+        print("元に戻すには: python demo/reset_demo.py --restore")
+        return 0
+
     print()
     print("次の手順:")
     print("  1. Project_Tree.exe を起動（案件が0件であることを見せる）")

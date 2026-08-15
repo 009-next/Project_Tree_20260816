@@ -21,3 +21,8 @@ server.log
 
 # Office の一時ロックファイル
 ~$*
+
+# 当日デモで作る取込フォルダ（中身は demo/ が正本）
+取込フォルダ/
+inbox/
+ledger_backup_*.db

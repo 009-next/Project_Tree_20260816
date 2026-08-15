@@ -113,9 +113,29 @@ def _thread_count() -> str:
         return "不明"
 
 
+def auto_ingest():
+    """起動前に「取込フォルダ」へ置かれた案件フォルダを取り込む。
+
+    フォルダが無ければ何もしないので、従来どおりの起動になる。
+    LLM は呼ばないため原価は 0 円。
+    """
+    try:
+        from projecttree import autoingest as _ai
+        ledger = Ledger(app_dir() / "ledger.db")
+        try:
+            res = _ai.run(ledger, app_dir())
+        finally:
+            ledger.close()
+        return _ai.summary_line(res)
+    except Exception as e:
+        # 取り込みに失敗してもアプリは起動させる（デモ中に開かないのが最悪）
+        return f"取込フォルダの読み込みに失敗しました（{type(e).__name__}）。起動は続けます。"
+
+
 def main():
     ensure_db()
     fix_asset_paths()
+    ingested = auto_ingest()
     port = find_free_port()
     threading.Thread(target=open_browser_when_ready, args=(port,), daemon=True).start()
 
@@ -125,6 +145,8 @@ def main():
     # どのビルド・どのデータで動いているのかを起動時に必ず示す。
     # ポートが自動で変わったとき、古いタブを見ていることに気づけるようにするため。
     print(f"  ビルド日時              : {_build_stamp()}")
+    if ingested:
+        print(f"  {ingested}")
     print(f"  案件数                  : {_thread_count()}")
     if port != DEFAULT_PORT:
         print(f"  ※ ポート {DEFAULT_PORT} が使用中のため {port} で起動しました。")
