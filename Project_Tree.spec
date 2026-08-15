@@ -17,6 +17,9 @@ a = Analysis(
         'projecttree.foldersync', 'projecttree.illustrate', 'projecttree.inference',
         'projecttree.masking', 'projecttree.modelgen', 'projecttree.models', 'projecttree.progress',
         'projecttree.projects', 'projecttree.slides', 'projecttree.stages', 'projecttree.vision',
+        # 記録から2D/3Dを起こす経路と、公開URL用の閲覧専用ガード
+        'projecttree.modelgen_llm', 'projecttree.readonly', 'projecttree.visibility',
+        'projecttree.docthread', 'projecttree.foldersync',
         'docx', 'docx.shared', 'docx.enum.text',
         'trimesh', 'trimesh.exchange.gltf', 'trimesh.exchange.stl',
         'ezdxf', 'numpy', 'PIL', 'PIL.Image', 'PIL.ImageDraw', 'PIL.ImageFont',
