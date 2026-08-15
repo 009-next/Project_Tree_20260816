@@ -1315,3 +1315,35 @@ def pt_visibility_show_all():
         return _vis.show_all(ledger)
     finally:
         ledger.close()
+
+
+# ==========================================================================
+# Phase 14: 記録から 2D/3D モデルを起こす（プリセット非依存）
+#   modelgen.py のプリセットは護岸・橋梁にしか当たらず、
+#   それ以外の案件ではモデルを作れなかった。
+#   写真が無くても台帳の記録だけから起こせる経路を足す。
+#   既存の /api/projecttree/model（プリセット）と
+#   /api/projecttree/progress/photo（写真）はそのまま残してある。
+# ==========================================================================
+
+from projecttree import modelgen_llm as _mgl  # noqa: E402
+
+
+@app.post("/api/projecttree/model/llm/estimate")
+def pt_model_llm_estimate(thread_id: str):
+    """記録からモデルを起こす前の見積り。API はまだ呼ばない。"""
+    ledger = get_ledger()
+    try:
+        return _mgl.generate(ledger, thread_id, confirm=False)
+    finally:
+        ledger.close()
+
+
+@app.post("/api/projecttree/model/llm")
+def pt_model_llm(thread_id: str, confirm: bool = False):
+    """記録から 2D/3D モデルを起こす。プリセットへは落とさない。"""
+    ledger = get_ledger()
+    try:
+        return _mgl.generate(ledger, thread_id, confirm=confirm)
+    finally:
+        ledger.close()

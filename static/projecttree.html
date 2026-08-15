@@ -331,6 +331,11 @@ header button:hover{background:#2f3a52}
     <input type="file" id="pg-photo" accept="image/jpeg,image/png,image/webp" style="display:none">
     <span id="pg-photo-name" class="note"></span>
   </div>
+  <div class="row"><b>2-2. 記録から作成（LLM）</b>
+    <button id="pg-llm">記録からモデルを起こす</button>
+    <div class="note">プリセットに当てはまらない案件でも、台帳の記録から寸法を推定して作ります。
+      実行前に概算費用を表示します。</div>
+  </div>
   <div class="row"><b>3. 図面・モデル取込</b>
     <button id="pg-imp-pick">ファイルを選ぶ</button>
     <input type="file" id="pg-imp" multiple
@@ -1159,6 +1164,30 @@ $('pg-photo').onchange=async e=>{
     } else { pgLog(j2.detail||'失敗しました'); }
   }catch(err){ pgLog('通信エラー'); }
   finally{ e.target.value=''; }
+};
+
+// 記録から 2D/3D モデルを起こす（プリセットに当たらない案件用）。
+// 写真から作成と同じ流れ: まず見積りを出し、承認してから実行する。
+$('pg-llm').onclick=async()=>{
+  if(!curThread){ alert('先に案件を選んでください。'); return; }
+  pgLog('見積り中…');
+  try{
+    const q='thread_id='+encodeURIComponent(curThread);
+    const j=await (await fetch('/api/projecttree/model/llm/estimate?'+q,{method:'POST'})).json();
+    if(j.status!=='estimate'){ pgLog(j.reason||j.detail||'見積りできませんでした'); return; }
+    const e2=j.estimate;
+    const ok=confirm(`記録から2D/3Dモデルを起こします。\n\n`
+      +`対象の記録: ${j.events} 件\nモデル: ${e2.model}\n`
+      +`概算トークン: 入力${e2.input_tokens} / 出力${e2.output_tokens}\n`
+      +`概算コスト: $${e2.usd}（約${e2.jpy}円）\n\n実行しますか。`);
+    if(!ok){ pgLog('中止しました（API は呼んでいません）'); return; }
+    pgLog('生成中…');
+    const j2=await (await fetch('/api/projecttree/model/llm?'+q+'&confirm=true',{method:'POST'})).json();
+    if(j2.status==='ok'){
+      pgLog(`生成しました: ${j2.parts.map(p=>p.name).join('・')} / 実測 $${j2.cost_usd}（見積 $${j2.estimate_usd}）`);
+      loadProgress(); loadThread(curThread);
+    } else { pgLog(j2.reason||j2.detail||'失敗しました'); }
+  }catch(err){ pgLog('通信エラー'); }
 };
 
 $('pg-imp-pick').onclick=()=>$('pg-imp').click();
