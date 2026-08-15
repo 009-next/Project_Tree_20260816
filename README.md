@@ -10,7 +10,7 @@
 同梱データの閲覧・資料出力・2D/3Dモデル操作が試せます。
 資料の取り込みとLLM実行は、公開先では無効にしています（下記のexeかPythonでお試しください）。
 
-**exeで起動（Python不要）**: [Releases](https://github.com/009-next/Project_Tree/releases) から
+**exeで起動（Python不要）**: [Releases](https://github.com/009-next/Project_Tree_20260816/releases) から
 `Project_Tree_windows.zip` をダウンロード → 展開 → `Project_Tree.exe` をダブルクリック。
 
 **Pythonで起動**:
@@ -59,7 +59,8 @@ projecttree/          Project_Tree の機能モジュール
   ├─ inference.py     LLM推論・段階分類・部位対応（引用検証つき）
   ├─ illustrate.py    資料用イメージ図（SVG生成・部品単位の編集）
   ├─ slides.py        段階カード用の画像生成
-  ├─ modelgen.py      2D/3Dモデル生成（trimesh + ezdxf・Blender不要）
+  ├─ modelgen.py      2D/3Dモデルの組み立て・書き出し（trimesh + ezdxf・Blender不要）
+  ├─ modelgen_llm.py  記録から寸法をLLMに推定させてモデルを起こす
   ├─ progress.py      部材進捗・全体進捗の算出
   ├─ exporters.py     資料出力（md / xlsx / pptx）
   ├─ docs.py          資料出力（pdf / word / 画像入りpptx）
@@ -73,6 +74,7 @@ projecttree/          Project_Tree の機能モジュール
   ├─ masking.py       API送信前の機密情報マスキング
   ├─ models.py        モデルtier割り当て・構造化出力の後処理
   ├─ provider.py      接続先の切り替え（Anthropic直 / Orca Router）
+  ├─ readonly.py      公開URL用の閲覧専用ガード（ローカル実行では通らない）
   └─ security.py      トークン認証・PDF検証・予算管理
 
 static/

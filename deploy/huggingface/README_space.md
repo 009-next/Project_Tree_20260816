@@ -21,7 +21,7 @@ license: mit
 このアプリは本来ローカル（127.0.0.1）で動かす前提のため、公開先では書き込み系を止めています。
 
 **全機能（資料の取り込み・LLM実行）を試す場合は、GitHubの手順でお手元に導入してください。**
-→ https://github.com/009-next/Project_Tree
+→ https://github.com/009-next/Project_Tree_20260816
 
 ## 触っていただきたい順番
 

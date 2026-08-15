@@ -34,7 +34,7 @@ Project_Tree は、建設・土木の現場資料（議事録・メール・現�
 ## 方法A: exe で起動する（Python不要・推奨）
 
 1. **Releases ページから `Project_Tree_windows.zip` をダウンロード**
-   → https://github.com/009-next/Project_Tree/releases
+   → https://github.com/009-next/Project_Tree_20260816/releases
 2. **zipを右クリック →「すべて展開」で展開する**
    （展開せずzipの中から直接起動すると、台帳ファイルを読み書きできず失敗します）
 3. 展開したフォルダの中の **`Project_Tree.exe` をダブルクリック**
@@ -53,8 +53,8 @@ Project_Tree は、建設・土木の現場資料（議事録・メール・現�
 事前に **Python 3.11 以上** が入っていることだけ確認してください（`python --version`）。
 
 ```bash
-git clone https://github.com/009-next/Project_Tree.git
-cd Project_Tree
+git clone https://github.com/009-next/Project_Tree_20260816.git
+cd Project_Tree_20260816
 pip install -r requirements.txt
 python run_app.py
 ```
