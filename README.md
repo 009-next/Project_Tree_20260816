@@ -107,8 +107,6 @@ schema.json     データ構造の正本（検証制約込み）
 
 ```
 First_READ.md                   起動方法（審査員向け）
-紹介記事_Project_Tree.md          設計の狙いと開発中の実バグ
-Project_Tree_プレゼン資料.md       プレゼン資料（Marp形式のソース）
 Project_Tree_プレゼン資料.pptx     プレゼン資料（10枚）
 scratch_out/demo_video/         デモ動画（約2分）
 scratch_out/deck_shots/         資料に使用したスクリーンショット

@@ -181,6 +181,5 @@ Python 3.11 以上であれば動作します。macOS / Linux でも同じ手順
 | ファイル | 内容 |
 |---|---|
 | [README.md](README.md) | ファイル構成・設計方針 |
-| [紹介記事_Project_Tree.md](紹介記事_Project_Tree.md) | 設計の狙いと、開発中に見つかった実バグの話 |
 | [Project_Tree_プレゼン資料.pptx](Project_Tree_プレゼン資料.pptx) | プレゼン資料（10枚） |
 | [scratch_out/demo_video/](scratch_out/demo_video/) | デモ動画（約2分） |
