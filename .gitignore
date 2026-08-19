@@ -26,3 +26,22 @@ server.log
 取込フォルダ/
 inbox/
 ledger_backup_*.db
+
+# 開発中のメモ・素材（提出物ではない）
+*.docx
+Enhancement*.md
+SKILLS.md
+claude.md
+hocks.md
+plan.md
+proposal.md
+reference.md
+rules.md
+skill.md
+PROMPTS.md
+OPUS5_SETUP.md
+schema.md
+Presentation.md
+Demo_movie.md
+提案書.txt
+20260814.txt

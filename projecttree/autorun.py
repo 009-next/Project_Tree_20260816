@@ -362,11 +362,29 @@ def _run_thread(ledger: Ledger, thread_id: str) -> dict:
     extractor は events を作るところまでで、どの案件のものかは判定しない。
     その判定は threader が持っているので、そのまま呼ぶ。
     """
+    # 取込時に人が指定した所属を、threader より先に反映する。
+    #
+    # threader.build_threads() は events の thread_hint を全件まとめ直し、
+    # そのたびに新しい thread_id の案件を作って events を移す。既存案件は
+    # 記録を失い、段階・3Dモデル・イメージ図だけが取り残される
+    # （実際にブースで、フォルダ取込のあと3案件が画面から消えた）。
+    # フォルダから取り込んだ資料は所属が確定しているので、ここで先に埋めれば
+    # 未割り当てが残らず、threader を走らせずに済む。
+    # 後段の reassign はそのまま残してある（threader が走った場合の是正用）。
+    pre_fixed = 0
+    try:
+        from projecttree import docthread as _dt_pre
+        pre_fixed = (_dt_pre.reassign(ledger) or {}).get("moved_events", 0)
+    except Exception:
+        pre_fixed = 0
+
     unassigned = ledger.conn.execute(
         "SELECT COUNT(*) c FROM events WHERE thread_id IS NULL").fetchone()["c"]
     if not unassigned:
-        return {"status": "skipped", "reason": "未割り当てのイベントはありません",
-                "cost_usd": 0.0}
+        return {"status": "skipped",
+                "reason": ("取込時の指定で割り当て済みです"
+                           if pre_fixed else "未割り当てのイベントはありません"),
+                "reassigned": pre_fixed, "cost_usd": 0.0}
     try:
         import threader
     except Exception as e:
