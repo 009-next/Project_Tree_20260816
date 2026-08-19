@@ -734,7 +734,8 @@ cv.addEventListener('contextmenu',e=>{
 
 // ---------- 右クリックメニュー ----------
 const MENUS={
-  '3d':  ['3Dモデルをダウンロード', [['glb','GLB（表示用）'],['stl','STL'],['dxf','DXF']]],
+  '3d':  ['3Dモデルをダウンロード', [['glb','GLB（表示用）'],['stl','STL'],['dxf','DXF'],
+                                    ['ifc','IFC（CIM・施工記録を属性で付与）']]],
   '2d':  ['2Dモデルをダウンロード', [['svg','SVG'],['dxf','DXF']]],
   'stage':['資料をダウンロード',    [['pptx_img','pptx（資料用画像スライド）'],['pptx','pptx（プレゼン資料）'],
                                     ['pdf','pdf（会議用資料・画像入り）'],['docx','word（会議用資料・画像入り）'],
@@ -757,6 +758,17 @@ function showMenu(x,y,kind,stageNo){
 addEventListener('click',()=>{$('menu').style.display='none'});
 
 function download(kind,fmt,stageNo){
+  // IFC は台帳の記録を属性として組み立てるため、その場でサーバに作らせる。
+  // 生成済み資産（GLB/STL/DXF/SVG）とは経路が違うので先に分ける。
+  if(fmt==='ifc'){
+    if(!curThread){ $('hud').textContent='案件を選んでください。'; return; }
+    $('hud').textContent='IFC を作成しています…';
+    const l=document.createElement('a');
+    l.href='/api/projecttree/model/ifc?'+new URLSearchParams({thread_id:curThread});
+    l.download=''; l.click();
+    setTimeout(()=>{ $('hud').textContent='IFC を書き出しました（施工記録つき）'; },1200);
+    return;
+  }
   if(kind==='3d'||kind==='2d'){
     const a=curAssets.find(x=>x.fmt===fmt&&(stageNo?x.stage_no===stageNo:x.stage_no===null))
          || curAssets.find(x=>x.fmt===fmt);

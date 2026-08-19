@@ -22,3 +22,6 @@ Pillow==12.2.0
 
 # PDFの読み取り・出力
 PyMuPDF==1.27.2.2
+
+# CIM連携（IFC書き出し。無くてもアプリは起動する）
+ifcopenshell==0.8.5

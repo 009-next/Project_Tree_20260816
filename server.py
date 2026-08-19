@@ -1347,3 +1347,46 @@ def pt_model_llm(thread_id: str, confirm: bool = False):
         return _mgl.generate(ledger, thread_id, confirm=confirm)
     finally:
         ledger.close()
+
+
+# ==========================================================================
+# Phase 15: CIM 連携（台帳の記録を属性として載せた IFC を書き出す）
+#   形状だけのモデルではなく、いつ・どんな経緯で施工されたかが
+#   付いたモデルを渡せるようにする。LLM は使わないので原価は 0。
+#   既存のモデル生成・出力経路には手を入れていない。
+# ==========================================================================
+
+from projecttree import ifcexport as _ifc  # noqa: E402
+
+
+@app.get("/api/projecttree/model/ifc")
+def pt_model_ifc(thread_id: str):
+    """案件の 2D/3D モデルを IFC で書き出す（属性つき）。"""
+    ledger = get_ledger()
+    try:
+        out = app_dir() / "assets" / "models" / f"{thread_id}.ifc"
+        try:
+            r = _ifc.build(ledger, thread_id, out)
+        except _ifc.IfcUnavailable as e:
+            raise HTTPException(503, str(e))
+        except ValueError as e:
+            raise HTTPException(404, str(e))
+        if r.get("status") != "ok":
+            raise HTTPException(400, r.get("reason") or "書き出せませんでした")
+        name = _thread_name_for_file(ledger, thread_id)
+    finally:
+        ledger.close()
+
+    data = Path(r["path"]).read_bytes()
+    fname = urllib.parse.quote(f"{name}.ifc")
+    return Response(content=data, media_type="application/x-step",
+                    headers={"Content-Disposition":
+                             f"attachment; filename*=UTF-8''{fname}"})
+
+
+def _thread_name_for_file(ledger, thread_id: str) -> str:
+    row = ledger.conn.execute(
+        "SELECT name FROM threads WHERE thread_id = ?", (thread_id,)).fetchone()
+    base = (row["name"] if row else thread_id)
+    bad = set(chr(92) + '/:*?"<>|')
+    return "".join(ch for ch in base if ch not in bad).strip() or thread_id

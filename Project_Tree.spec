@@ -20,7 +20,7 @@ a = Analysis(
         # 記録から2D/3Dを起こす経路と、公開URL用の閲覧専用ガード
         'projecttree.modelgen_llm', 'projecttree.readonly', 'projecttree.visibility',
         'projecttree.shapes_ext', 'projecttree.autoingest', 'projecttree.fastextract',
-        'projecttree.authguard',
+        'projecttree.authguard', 'projecttree.ifcexport',
         'projecttree.docthread', 'projecttree.foldersync',
         'docx', 'docx.shared', 'docx.enum.text',
         'trimesh', 'trimesh.exchange.gltf', 'trimesh.exchange.stl',
